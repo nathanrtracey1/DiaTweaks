@@ -11,6 +11,8 @@ SWIFTFLAGS := -target arm64-apple-macos14.0 -O -parse-as-library -wmo -module-na
 PASSKEYS := src/dylib/Patches/Passkeys/extension
 EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file))
 
+DYLIB_OBJS := $(patsubst src/dylib/%.m,build/obj/%.o,$(filter %.m,$(DYLIB_SOURCES)))
+
 all: build/diapatch build/DiaPatches.dylib build/patches.json
 
 build/diapatch: $(wildcard src/diapatch/*.[hm]) | build
@@ -19,9 +21,13 @@ build/diapatch: $(wildcard src/diapatch/*.[hm]) | build
 build/DiaPatchesSwift.o: $(DYLIB_SWIFT) | build
 	swiftc $(SWIFTFLAGS) -emit-object -o $@ $^
 
-build/DiaPatches.dylib: $(DYLIB_SOURCES) build/DiaPatchesSwift.o $(wildcard $(PASSKEYS)/*) | build
+build/obj/%.o: src/dylib/%.m
+	@mkdir -p $(dir $@)
+	clang $(CFLAGS) -Isrc/dylib -c -o $@ $<
+
+build/DiaPatches.dylib: $(DYLIB_OBJS) build/DiaPatchesSwift.o $(wildcard $(PASSKEYS)/*) | build
 	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -framework AppKit -framework QuartzCore -framework Metal -framework UniformTypeIdentifiers -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
-		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(filter %.m %.o,$^)
+		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(DYLIB_OBJS) build/DiaPatchesSwift.o
 
 # The patch list for diatweaks. With DIAPATCH_MANIFEST set, the dylib writes it and exits as it loads, so diapatch never runs.
 build/patches.json: build/DiaPatches.dylib build/diapatch

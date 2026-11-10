@@ -46,7 +46,7 @@ static DPBoostEditor *DPEditor;
 
 @end
 
-static NSWindow *DPBrowserWindow(void) {
+static NSWindow *DPActiveBrowserWindow(void) {
     if (DPIsKind(NSApp.mainWindow, DPDiaWindow)) return NSApp.mainWindow;
     for (NSWindow *window in NSApp.orderedWindows)
         if (DPIsKind(window, DPDiaWindow) && window.visible) return window;
