@@ -2,7 +2,8 @@
 
 const CGFloat DPWindowPadding = 6;
 NSHashTable<NSView *> *DPContainers;
-static char DPRequestedFrameKey, DPRadiusKey, DPAnimationKey;
+char DPAnimationKey;
+static char DPRequestedFrameKey, DPRadiusKey;
 
 NSValue *DPRequestedFrame(NSView *container) {
     return DPGet(container, &DPRequestedFrameKey);
@@ -28,7 +29,7 @@ CGFloat DPEdgeToEdgeAmount(NSView *view) {
 static NSRect DPEdgeToEdgeFrame(NSView *view, NSRect frame, CGFloat amount) {
     CGFloat inset = amount * DPWindowPadding;
     NSView *superview = view.superview;
-    if (inset == 0 || !superview || DPChatCard(view)) return frame;
+    if (inset == 0 || !superview) return frame;
     NSEdgeInsets gaps = DPGaps(superview, frame);
     if (DPIsPadding(gaps.left)) frame.origin.x -= inset, frame.size.width += inset;
     if (DPIsPadding(gaps.right)) frame.size.width += inset;
@@ -115,7 +116,7 @@ static NSString *DPVerifyEdgeToEdge(DPPatch *patch) {
         BOOL square = patch->on && DPFullScreen(container);
         if (layer && (DPCornersRound(layer, YES) == square || (!DPBesideSidebar(container) && DPCornersRound(layer, NO) == square)))
             return square ? @"corners stay round in full screen" : @"corners are square out of full screen";
-        if (!patch->on || DPEdgeToEdgeAmount(container) == 0 || DPChatCard(container)) {
+        if (!patch->on || DPEdgeToEdgeAmount(container) == 0) {
             if (!NSEqualRects(container.frame, requested.rectValue)) return @"web content isn't where Dia put it";
             continue;
         }
@@ -129,6 +130,7 @@ static NSString *DPVerifyEdgeToEdge(DPPatch *patch) {
 static void DPInstallEdgeToEdge(void) {
     DPContainers = [NSHashTable weakObjectsHashTable];
     DPHook(DPDiaContentContainer, @selector(setFrame:), (IMP)DPContainer_setFrame);
+    DPHook(DPDiaChatContentContainer, @selector(setFrame:), (IMP)DPChatHost_setFrame);
     DPInstallRestyle();
     DPInstallPopover();
 }

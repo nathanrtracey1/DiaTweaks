@@ -4,9 +4,24 @@ static char DPChatKey, DPPendingRestyleKey, DPCheckChatKey;
 
 static void DPRestyleContainerBody(NSView *container, BOOL allowFrame) {
     DPApplySquareCorners(container);
-    if (!allowFrame || !DPEdgeToEdgeActive() || !DPChatCard(container)) return;
-    NSValue *requested = DPRequestedFrame(container);
-    if (requested && !NSEqualRects(container.frame, requested.rectValue) && DPMayAdjust(container)) container.frame = requested.rectValue;
+    if (!allowFrame) return;
+    NSView *host = DPChatCardHost(container);
+    if (host) {
+        NSValue *requested = DPChatHostRequestedFrame(host);
+        if (!requested) {
+            DPSetChatHostRequestedFrame(host, host.frame);
+            requested = [NSValue valueWithRect:host.frame];
+        }
+        NSRect target = DPEdgeToEdge.on ? DPEdgeToEdgeChatFrame(host, requested.rectValue) : requested.rectValue;
+        if (!NSEqualRects(host.frame, target) && DPMayAdjust(host)) {
+            host.frame = target;
+            host.needsLayout = host.needsDisplay = YES;
+        }
+    }
+    if (!DPEdgeToEdge.on) {
+        NSValue *requested = DPRequestedFrame(container);
+        if (requested && !NSEqualRects(container.frame, requested.rectValue) && DPMayAdjust(container)) container.frame = requested.rectValue;
+    }
 }
 
 void DPRestyleContainer(NSView *container) { DPRestyleContainerBody(container, YES); }
@@ -23,8 +38,10 @@ static void DPQueueRestyle(NSView *container, BOOL checkChat) {
             BOOL chat = DPChatCard(container) != nil;
             if ([DPGet(container, &DPChatKey) boolValue] != chat) {
                 DPSet(container, &DPChatKey, @(chat));
-                NSValue *requested = DPRequestedFrame(container);
-                if (requested) container.frame = requested.rectValue;
+                if (!DPEdgeToEdge.on) {
+                    NSValue *requested = DPRequestedFrame(container);
+                    if (requested && DPMayAdjust(container)) container.frame = requested.rectValue;
+                }
             }
         }
         DPRestyleContainer(container);

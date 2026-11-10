@@ -130,17 +130,42 @@ BOOL DPCornersRound(CALayer *layer, BOOL right) {
 }
 
 BOOL DPBesideSidebar(NSView *container) {
-    return NSMinX(container.frame) > DPWindowPadding + 1 && !DPChatCard(container);
+    return NSMinX(container.frame) > DPWindowPadding + 1;
 }
 
 BOOL DPFullScreen(NSView *container) {
-    return (container.window.styleMask & NSWindowStyleMaskFullScreen) && !DPChatCard(container);
+    return (container.window.styleMask & NSWindowStyleMaskFullScreen) != 0;
+}
+
+static NSView *DPParentContainer(NSView *view) {
+    for (NSView *v = view; v; v = v.superview)
+        if (DPIsKind(v, DPDiaContentContainer)) return v;
+    return view;
 }
 
 static CALayer *DPCornerShape(NSView *container, CGFloat *base, CGFloat *grow, CGFloat *left, CGFloat *right) {
-    CALayer *layer = DPRoundedContent(container).layer;
+    if (DPIsKind(container, DPDiaChatContentContainer)) {
+        NSView *card = DPRoundedContent(container);
+        CALayer *layer = card.layer;
+        if (!layer) return nil;
+        NSView *parent = DPParentContainer(container);
+        *right = DPSquareChatCorners.progress * DPEdgeToEdge.progress;
+        *left = (DPBesideSidebar(parent) ? DPSquareSidebarCorners.progress : 1.0) * DPEdgeToEdge.progress;
+        *base = layer.cornerRadius;
+        *grow = 1;
+        return layer;
+    }
+    NSView *card = DPChatCard(container);
+    CALayer *layer = (card ?: DPRoundedContent(container)).layer;
     if (!layer) return nil;
     CGFloat amount = DPEdgeToEdgeAmount(container);
+    if (card) {
+        *right = DPSquareChatCorners.progress * amount;
+        *left = (DPBesideSidebar(container) ? DPSquareSidebarCorners.progress : 1.0) * amount;
+        *base = layer.cornerRadius;
+        *grow = 1;
+        return layer;
+    }
     *right = DPFullScreen(container) ? amount : 0;
     BOOL beside = DPBesideSidebar(container);
     *left = beside ? DPSquareSidebarCorners.progress * amount : *right;
@@ -239,9 +264,18 @@ void DPApplySquareCorners(NSView *container) {
     DPSet(container, &DPCornersTouchedKey, @YES);
     DPWithoutAnimation(^{
         DPUseContinuousCurve(layer);
-        DPUseContinuousCurve(DPChatCard(container).layer);
-        DPMaskCorners(container, layer, left, right);
-        DPReshapePaths(container, base, grow, left, right);
+        NSView *card = DPChatCard(container);
+        NSView *host = card ? DPChatCardHost(container) : nil;
+        DPMaskCorners(host ?: container, layer, left, right);
+        DPReshapePaths(host ?: container, base, grow, left, right);
+        if (host) {
+            CALayer *containerLayer = DPRoundedContent(container).layer;
+            if (containerLayer && containerLayer != layer) {
+                DPUseContinuousCurve(containerLayer);
+                DPMaskCorners(container, containerLayer, left, 1.0);
+                DPReshapePaths(container, base, grow, left, 1.0);
+            }
+        }
     });
     DPRoundCornerControls(container);
 }
@@ -258,7 +292,7 @@ CAAnimation *DPReshapeDiaAnimation(CALayer *layer, CAAnimation *animation) {
     CABasicAnimation *move = (CABasicAnimation *)animation;
     if (![move isKindOfClass:CABasicAnimation.class] || !([move.keyPath isEqual:@"path"] || [move.keyPath isEqual:@"shadowPath"])) return animation;
     NSView *container = [DPPathOwners objectForKey:layer];
-    if (!container || !DPWindowCornerGrowth(container.window)) return animation;
+    if (!container) return animation;
     CGFloat base, grow, left, right;
     if (!DPCornerShape(container, &base, &grow, &left, &right)) return animation;
     CABasicAnimation *reshaped = [move copy];
@@ -274,7 +308,8 @@ CAAnimation *DPReshapeDiaAnimation(CALayer *layer, CAAnimation *animation) {
 
 static NSString *DPVerifySquareCorners(DPPatch *patch) {
     for (NSView *container in DPFindViews(DPDiaContentContainer)) {
-        CALayer *layer = DPRoundedContent(container).layer;
+        NSView *content = DPChatCard(container) ?: DPRoundedContent(container);
+        CALayer *layer = content.layer;
         if (!layer) return @"no rounded web content found";
         if (!DPBesideSidebar(container)) continue;
         BOOL square = patch->on && DPEdgeToEdgeAmount(container) > 0.5;
@@ -291,7 +326,33 @@ DP_PATCH(DPSquareSidebarCorners) {
     .detail = @"Give web pages square corners where they meet the sidebar.",
     .symbol = @"square.fill",
     .tint = @"systemBlueColor",
+    .section = @"Page",
     .requires = @"edgeToEdge",
     .relayout = DPRelayoutContainers,
     .verify = DPVerifySquareCorners,
+};
+
+static NSString *DPVerifySquareChatCorners(DPPatch *patch) {
+    for (NSView *container in DPFindViews(DPDiaContentContainer)) {
+        NSView *card = DPChatCard(container);
+        if (!card) continue;
+        CALayer *layer = card.layer;
+        if (!layer) continue;
+        BOOL square = patch->on && DPEdgeToEdge.on;
+        if (DPCornersRound(layer, YES) == square) return square ? @"corners by Chat are round" : @"corners by Chat are square";
+    }
+    return nil;
+}
+
+DP_PATCH(DPSquareChatCorners) {
+    .key = @"squareChatCorners",
+    .defaultOn = NO,
+    .order = 21,
+    .title = @"Square Corners Next to Chat",
+    .detail = @"Give web pages square corners where they meet the Chat panel.",
+    .symbol = @"sidebar.right",
+    .tint = @"systemBlueColor",
+    .section = @"Page",
+    .requires = @"edgeToEdge",
+    .verify = DPVerifySquareChatCorners,
 };
