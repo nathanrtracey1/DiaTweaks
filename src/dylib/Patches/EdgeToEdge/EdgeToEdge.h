@@ -1,7 +1,8 @@
 #import "StdPatch/StdPatch.h"
 
-extern DPPatch DPEdgeToEdge, DPSquareSidebarCorners;
+extern DPPatch DPEdgeToEdge, DPSquareSidebarCorners, DPSquareChatCorners;
 extern const CGFloat DPWindowPadding;
+extern char DPAnimationKey;
 extern NSHashTable<NSView *> *DPContainers;
 static const CACornerMask DPLeftCorners = kCALayerMinXMinYCorner | kCALayerMinXMaxYCorner;
 static const CACornerMask DPRightCorners = kCALayerMaxXMinYCorner | kCALayerMaxXMaxYCorner;
@@ -9,6 +10,11 @@ static const CACornerMask DPRightCorners = kCALayerMaxXMinYCorner | kCALayerMaxX
 NSValue *DPRequestedFrame(NSView *container);
 NSView *DPRoundedContent(NSView *container);
 NSView *DPChatCard(NSView *container);
+NSView *DPChatCardHost(NSView *container);
+NSRect DPEdgeToEdgeChatFrame(NSView *host, NSRect frame);
+NSValue *DPChatHostRequestedFrame(NSView *host);
+void DPSetChatHostRequestedFrame(NSView *host, NSRect frame);
+void DPChatHost_setFrame(NSView *self, SEL _cmd, NSRect frame);
 CGFloat DPBaseCornerRadius(NSView *container);
 void DPAnimateLayer(NSView *container, CALayer *layer, NSString *key, id value);
 void DPInstallRestyle(void);
