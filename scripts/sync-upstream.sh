@@ -2,11 +2,16 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-echo "==> Fetching updates from upstream (origin/main)..."
-git fetch origin main
+upstream_remote="upstream"
+if ! git remote | grep -q "^upstream$"; then
+    upstream_remote="origin"
+fi
+
+echo "==> Fetching updates from upstream ($upstream_remote/main)..."
+git fetch "$upstream_remote" main
 
 echo "==> Merging upstream updates into your branch..."
-git merge origin/main --no-edit
+git merge "$upstream_remote/main" --no-edit
 
 echo "==> Running checks..."
 make check
