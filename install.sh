@@ -35,14 +35,6 @@ rm -rf "$incoming"
 mkdir -p "$incoming" "$support/bin"
 cp build/diapatch build/DiaPatches.dylib build/patches.json ${cli:+"$cli"} "$incoming/"
 cp -R assets/app-icons "$incoming/"
-if [ -f src/dylib/Patches/UBlockOrigin/uBlock0.chromium.zip ]; then
-    rm -rf "$incoming/ublock-origin"
-    unzip -qo src/dylib/Patches/UBlockOrigin/uBlock0.chromium.zip -d "$incoming"
-    if [ -d "$incoming/uBlock0.chromium" ]; then
-        mv "$incoming/uBlock0.chromium" "$incoming/ublock-origin"
-    fi
-    cp src/dylib/Patches/UBlockOrigin/uBlock0.chromium.zip "$incoming/"
-fi
 # Each rename is atomic, and Ctrl-C waits until all are done, so the installed files always come from one build.
 trap 'interrupted=1' INT TERM
 (
@@ -51,13 +43,6 @@ trap 'interrupted=1' INT TERM
     mv -f "$incoming/DiaPatches.dylib" "$incoming/patches.json" "$support/"
     rm -rf "$support/app-icons"
     mv -f "$incoming/app-icons" "$support/"
-    if [ -d "$incoming/ublock-origin" ]; then
-        rm -rf "$support/ublock-origin"
-        mv -f "$incoming/ublock-origin" "$support/"
-    fi
-    if [ -f "$incoming/uBlock0.chromium.zip" ]; then
-        mv -f "$incoming/uBlock0.chromium.zip" "$support/"
-    fi
 )
 [ -z "${interrupted-}" ] || exit 130
 trap 'exit 130' INT TERM
