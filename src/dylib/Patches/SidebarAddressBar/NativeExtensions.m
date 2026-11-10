@@ -127,6 +127,7 @@ DP_PATCH(DPSidebarExtensionsMenuOnly) {
 
 DP_PATCH(DPSidebarExtensionDivider) {
     .key = @"sidebarExtensionDivider",
+        .tint = @"systemTealColor",
     .defaultOn = NO,
     .order = 91, .title = @"Divider below extensions",
     .detail = @"Separate extension tiles from pinned tabs.",

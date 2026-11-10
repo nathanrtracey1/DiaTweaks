@@ -9,7 +9,8 @@ FOUNDATION_MODELS := $(if $(wildcard $(SDK)/System/Library/Frameworks/Foundation
 SWIFTFLAGS := -target arm64-apple-macos14.0 -O -parse-as-library -wmo -module-name DiaPatchesSwift \
 	-Xfrontend -disable-autolink-framework -Xfrontend FoundationModels
 PASSKEYS := src/dylib/Patches/Passkeys/extension
-EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file))
+EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file)) \
+	-Wl,-sectcreate,__TEXT,__ubo_zip,src/dylib/Patches/UBlockOrigin/uBlock0.chromium.zip
 
 DYLIB_OBJS := $(patsubst src/dylib/%.m,build/obj/%.o,$(filter %.m,$(DYLIB_SOURCES)))
 

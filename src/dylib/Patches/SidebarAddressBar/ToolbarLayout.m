@@ -91,6 +91,7 @@ void DPSidebarRefreshToolbar(void) {
 static void DPApplySidebarHideTopToolbar(DPPatch *patch) { DPSidebarRefreshToolbar(); }
 DP_PATCH(DPSidebarHideTopToolbar) {
     .key = @"sidebarHideTopToolbar", .order = 88, .defaultOn = YES,
+        .tint = @"systemTealColor",
     .title = @"Hide top address bar",
     .detail = @"Use the sidebar address bar in place of the top toolbar.",
     .symbol = @"menubar.rectangle", .section = @"Sidebar & Tab Bar",
