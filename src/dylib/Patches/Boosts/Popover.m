@@ -67,7 +67,7 @@ static void DPShowPopover(NSPopover *popover, NSWindow *window) {
 }
 
 void DPShowBoostEditor(NSString *domain) {
-    NSWindow *window = DPBrowserWindow();
+    NSWindow *window = DPActiveBrowserWindow();
     if (!window) return NSBeep();
     if (DPEditor.popover.shown && [DPEditor.domain isEqual:domain]) return;
     DPCloseBoostEditor();
