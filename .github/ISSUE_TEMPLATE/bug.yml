@@ -19,6 +19,7 @@ body:
       options:
         - Edge-to-Edge Web Pages
         - Square Corners Next to Sidebar
+        - Boosts
         - Hide Toolbar
         - Show Toolbar on Hover
         - Toggle toolbar visibility
