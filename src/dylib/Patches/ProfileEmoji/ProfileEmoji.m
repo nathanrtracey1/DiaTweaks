@@ -1,15 +1,17 @@
-#import "StdPatch/StdPatch.h"
-
-extern DPPatch DPProfileEmoji;
+#import "ProfileEmoji.h"
 
 static NSString *const DPEmojisKey = @"profileEmojis";
+NSString *const DPSymbolPrefix = @"symbol:";
 // The gap is between what's drawn, so emoji and dots sit the same distance apart in any mix.
 static const CGFloat DPSidebarEmojiSize = 13.5, DPSidebarEmojiWidth = 16, DPSidebarDotWidth = 6, DPSidebarGap = 10;
 static NSUserDefaults *DPEmojiDefaults;
-static char DPLabelKey, DPFieldKey;
+static char DPLabelKey;
 
+// A symbol this macOS doesn't have counts as no icon, so Dia's dot shows instead of the saved name.
 static NSString *DPEmoji(NSString *spaceID) {
-    return DPProfileEmoji.on && spaceID ? [DPEmojiDefaults dictionaryForKey:DPEmojisKey][spaceID] : nil;
+    NSString *icon = DPProfileEmoji.on && spaceID ? DPSavedIcon(spaceID) : nil;
+    if ([icon hasPrefix:DPSymbolPrefix] && !DPSymbolNamed([icon substringFromIndex:DPSymbolPrefix.length])) return nil;
+    return icon;
 }
 
 // Keys are Swift SpaceIDs, which describe themselves as the ID.
@@ -18,27 +20,62 @@ static NSString *DPSpaceIDOf(NSView *view, NSDictionary *views) {
     return nil;
 }
 
+static NSImage *DPSymbolImage(NSString *icon, CGFloat size) {
+    if (![icon hasPrefix:DPSymbolPrefix]) return nil;
+    NSImage *image = DPSymbolNamed([icon substringFromIndex:DPSymbolPrefix.length]);
+    return [image imageWithSymbolConfiguration:[NSImageSymbolConfiguration configurationWithPointSize:size weight:NSFontWeightSemibold]];
+}
+
+// An image view takes the mouse down an emoji's label passes on, which would stop clicks switching profiles.
+@interface DPProfileSymbolView : NSImageView
+@end
+
+@implementation DPProfileSymbolView
+- (NSView *)hitTest:(NSPoint)point {
+    return nil;
+}
+
+// Dia's item already reads the profile's name, which the symbol's own description, like "itunes u", would drown out.
+- (BOOL)isAccessibilityElement {
+    return NO;
+}
+@end
+
+// One view per host, an image view for a symbol or a label for an emoji; nil kind removes it.
+static NSView *DPIconView(NSView *host, Class kind) {
+    NSView *view = DPGet(host, &DPLabelKey);
+    if (view && ![view isKindOfClass:kind]) {
+        [view removeFromSuperview];
+        view = nil;
+    }
+    if (!view && kind) {
+        view = kind == DPProfileSymbolView.class ? [DPProfileSymbolView new] : [NSTextField labelWithString:@""];
+        [host addSubview:view];
+    }
+    DPSet(host, &DPLabelKey, view);
+    return view;
+}
+
+// Symbols draw in the label color and dim the same way emoji do.
 static void DPShowEmoji(NSView *host, NSView *dot, NSString *emoji, CGFloat size, CGFloat alpha) {
-    NSTextField *label = DPGet(host, &DPLabelKey);
-    if (!emoji) {
-        if (!label) return;
-        dot.hidden = NO;
-        [label removeFromSuperview];
-        DPSet(host, &DPLabelKey, nil);
-        return;
-    }
-    dot.hidden = YES;
-    if (!label) {
-        label = [NSTextField labelWithString:@""];
+    NSImage *symbol = DPSymbolImage(emoji, size * 0.85);
+    NSView *view = DPIconView(host, !emoji ? nil : symbol ? DPProfileSymbolView.class : NSTextField.class);
+    dot.hidden = view != nil;
+    if (!view) return;
+    if (symbol) {
+        NSImageView *image = (NSImageView *)view;
+        image.image = symbol;
+        image.contentTintColor = NSColor.labelColor;
+        [image setFrameSize:symbol.size];
+    } else {
+        NSTextField *label = (NSTextField *)view;
         label.alignment = NSTextAlignmentCenter;
-        [host addSubview:label];
-        DPSet(host, &DPLabelKey, label);
+        label.stringValue = emoji;
+        label.font = [NSFont systemFontOfSize:size];
+        [label sizeToFit];
     }
-    label.stringValue = emoji;
-    label.font = [NSFont systemFontOfSize:size];
-    label.alphaValue = alpha;
-    [label sizeToFit];
-    label.frame = (NSRect){ { NSMidX(host.bounds) - label.frame.size.width / 2, NSMidY(host.bounds) - label.frame.size.height / 2 }, label.frame.size };
+    view.alphaValue = alpha;
+    view.frame = (NSRect){ { round(NSMidX(host.bounds) - view.frame.size.width / 2), round(NSMidY(host.bounds) - view.frame.size.height / 2) }, view.frame.size };
 }
 
 static void DPShowSidebarItem(NSView *item) {
@@ -100,63 +137,15 @@ static void DPRefresh(DPPatch *patch) {
         for (NSView *view in DPFindViews(name.UTF8String)) view.needsLayout = YES;
 }
 
-@interface DPEmojiField : NSTextField <NSTextFieldDelegate>
-@property(copy) NSString *spaceID;
-@end
-
-@implementation DPEmojiField
-- (BOOL)becomeFirstResponder {
-    BOOL became = [super becomeFirstResponder];
-    if (became) dispatch_async(dispatch_get_main_queue(), ^{ [NSApp orderFrontCharacterPalette:self]; });
-    return became;
+NSString *DPSavedIcon(NSString *spaceID) {
+    return [DPEmojiDefaults dictionaryForKey:DPEmojisKey][spaceID];
 }
 
-- (void)controlTextDidChange:(NSNotification *)note {
-    __block NSString *last = @"";
-    [self.stringValue enumerateSubstringsInRange:NSMakeRange(0, self.stringValue.length) options:NSStringEnumerationByComposedCharacterSequences
-                                      usingBlock:^(NSString *character, NSRange _, NSRange __, BOOL *___) { last = character; }];
-    last = [last stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (![self.stringValue isEqual:last]) self.stringValue = last;
-    NSMutableDictionary *emoji = [[DPEmojiDefaults dictionaryForKey:DPEmojisKey] mutableCopy] ?: [NSMutableDictionary dictionary];
-    emoji[self.spaceID] = last.length ? last : nil;
-    [DPEmojiDefaults setObject:emoji forKey:DPEmojisKey];
+void DPSaveIcon(NSString *spaceID, NSString *icon) {
+    NSMutableDictionary *icons = [[DPEmojiDefaults dictionaryForKey:DPEmojisKey] mutableCopy] ?: [NSMutableDictionary dictionary];
+    icons[spaceID] = icon;
+    [DPEmojiDefaults setObject:icons forKey:DPEmojisKey];
     DPRefresh(&DPProfileEmoji);
-}
-@end
-
-static void DPAddEmojiRow(NSViewController *pane) {
-    NSView *group = DPFindView(pane.view, ^BOOL(NSView *view) { return DPIsKind(view, DPDiaSettingsFormGroup); });
-    NSStackView *rows = (NSStackView *)DPSubview(group, "NSStackView");
-    NSTextField *title = (NSTextField *)DPFindView(rows.arrangedSubviews.firstObject, ^BOOL(NSView *view) { return [view isKindOfClass:NSTextField.class]; });
-    NSString *spaceID = [DPSwiftValue(pane, @"spaceID") description];
-    if (!rows || !title || !spaceID || DPGet(pane, &DPFieldKey)) return;
-
-    NSTextField *label = [NSTextField labelWithString:@"Emoji"];
-    label.font = title.font;
-    label.textColor = title.textColor;
-    DPEmojiField *field = [DPEmojiField textFieldWithString:[DPEmojiDefaults dictionaryForKey:DPEmojisKey][spaceID] ?: @""];
-    field.spaceID = spaceID;
-    field.delegate = field;
-    field.alignment = NSTextAlignmentCenter;
-    field.bezelStyle = NSTextFieldRoundedBezel;
-    field.placeholderString = @"None";
-    NSView *row = [NSView new];
-    for (NSView *view in @[ label, field ]) {
-        view.translatesAutoresizingMaskIntoConstraints = NO;
-        [row addSubview:view];
-    }
-    NSBox *line = [NSBox new];
-    line.boxType = NSBoxSeparator;
-    [rows addArrangedSubview:line];
-    [rows addArrangedSubview:row];
-    [NSLayoutConstraint activateConstraints:@[
-        [row.heightAnchor constraintEqualToConstant:42], [row.widthAnchor constraintEqualToAnchor:rows.widthAnchor],
-        [line.widthAnchor constraintEqualToAnchor:rows.widthAnchor],
-        [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor], [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [field.trailingAnchor constraintEqualToAnchor:row.trailingAnchor], [field.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [field.widthAnchor constraintEqualToConstant:64],
-    ]];
-    DPSet(pane, &DPFieldKey, field);
 }
 
 static void DPProfilePane_viewDidLoad(NSViewController *self, SEL _cmd) {
@@ -178,7 +167,7 @@ DP_PATCH(DPProfileEmoji) {
     .order = 78,
     .defaultOn = YES,
     .title = @"Profile Emoji",
-    .detail = @"Show an emoji in place of each profile’s dot in the profile switcher. Choose them in Settings › Profiles.",
+    .detail = @"Show an emoji or a symbol in place of each profile’s dot in the profile switcher. Choose them in Settings › Profiles.",
     .symbol = @"emoji.face.grinning.inverse face.smiling.inverse",
     .tint = @"systemTealColor",
     .section = @"Sidebar & Tab Bar",

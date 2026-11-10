@@ -41,11 +41,15 @@ build/mouse-back-forward: tests/mouse-back-forward.m src/dylib/Patches/MouseBack
 build/vertical-tab-glow: tests/vertical-tab-glow.m $(wildcard src/dylib/Patches/HideVerticalTabGlow/*.[hm]) | build
 	clang $(CFLAGS) -Isrc/dylib -framework AppKit -framework QuartzCore -o $@ $<
 
-# Checks that need no Dia: grouping, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, and that Settings shows each tweak like its neighbours.
-check: build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/patches.json
+build/profile-symbols: tests/profile-symbols.m src/dylib/Patches/ProfileEmoji/Symbols.m | build
+	clang $(CFLAGS) -Isrc/dylib -framework AppKit -o $@ $^
+
+# Checks that need no Dia: grouping, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, Profile Emoji symbol search, and that Settings shows each tweak like its neighbours.
+check: build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/profile-symbols build/patches.json
 	build/group-tabs
 	build/mouse-back-forward
 	build/vertical-tab-glow
+	build/profile-symbols
 	tests/sidebar-grain
 	scripts/check-patches
 

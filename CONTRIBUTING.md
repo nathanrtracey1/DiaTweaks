@@ -37,7 +37,7 @@ CI fails if a patch has no wiki page or the sidebar doesn't link to it, so a new
 
 ## Testing
 
-`make check` runs without Dia, and CI runs it too: it tests the Group Tabs by Domain logic in `tests/group-tabs.m`, and `scripts/check-patches` fails if a tweak's color differs from the rest of its section, an icon names an SF Symbol that doesn't exist, or a description runs past 280 characters.
+`make check` runs without Dia, and CI runs it too: it tests the Group Tabs by Domain logic in `tests/group-tabs.m` and Profile Emoji’s symbol search in `tests/profile-symbols.m`, and `scripts/check-patches` fails if a tweak's color differs from the rest of its section, an icon names an SF Symbol that doesn't exist, or a description runs past 280 characters.
 
 `make test` installs your build's dylib and reopens Dia in test mode. Dia tries the patches all off, all on, each on its own and in pairwise combinations without saving any of it, runs every patch's `verify` after each, then goes back to your settings. The script prints what failed and exits non-zero if anything did. It can't move the tabs between the sidebar and the top, so run it once in each layout. Square corners only get tested with the sidebar open.
 
