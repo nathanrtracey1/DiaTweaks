@@ -24,6 +24,7 @@
 #define DPDiaPinnedTabOutline   "_TtC5TabUIP33_CFF5B89D7BC9743BBA6108D119E2E37020SelectionOutlineView"
 #define DPDiaContentPane        "_TtC11ContentPane15ContentPaneView"
 #define DPDiaContentContainer   "_TtC6Window20ContentContainerView"
+#define DPDiaChatContentContainer "_TtC6WindowP33_609C411878B0DC104EFC1CB446BE621E36AssistantSidebarContentContainerView"
 #define DPDiaSplitPane          "_TtC5ARCUI24SplitViewContentPaneView"  // One per page of a split, and one in a window without.
 #define DPDiaFloatingSidebar    "_TtC6Window28FloatingSidebarContainerView"
 #define DPDiaWindowBackgroundTile "_TtC15WindowTreatment24WindowBackgroundBaseView"

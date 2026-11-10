@@ -4,11 +4,23 @@ static char DPChatKey, DPPendingRestyleKey, DPCheckChatKey;
 
 void DPRestyleContainer(NSView *container) {
     DPApplySquareCorners(container);
-    CALayer *card = DPChatCard(container).layer;
-    if (!card) return;
-    if (card.cornerCurve != kCACornerCurveContinuous) card.cornerCurve = kCACornerCurveContinuous;
-    NSValue *requested = DPRequestedFrame(container);
-    if (requested && !NSEqualRects(container.frame, requested.rectValue) && DPMayAdjust(container)) container.frame = requested.rectValue;
+    NSView *host = DPChatCardHost(container);
+    if (host) {
+        NSValue *requested = DPChatHostRequestedFrame(host);
+        if (!requested) {
+            DPSetChatHostRequestedFrame(host, host.frame);
+            requested = [NSValue valueWithRect:host.frame];
+        }
+        NSRect target = DPEdgeToEdge.on ? DPEdgeToEdgeChatFrame(host, requested.rectValue) : requested.rectValue;
+        if (!NSEqualRects(host.frame, target) && DPMayAdjust(host)) {
+            host.frame = target;
+            host.needsLayout = host.needsDisplay = YES;
+        }
+    }
+    if (!DPEdgeToEdge.on) {
+        NSValue *requested = DPRequestedFrame(container);
+        if (requested && !NSEqualRects(container.frame, requested.rectValue) && DPMayAdjust(container)) container.frame = requested.rectValue;
+    }
 }
 
 // Layout, layer updates and shadow layout often coincide, so they share one deferred restyle.
@@ -24,8 +36,10 @@ static void DPQueueRestyle(NSView *container, BOOL checkChat) {
             BOOL chat = DPChatCard(container) != nil;
             if ([DPGet(container, &DPChatKey) boolValue] != chat) {
                 DPSet(container, &DPChatKey, @(chat));
-                NSValue *requested = DPRequestedFrame(container);
-                if (requested) container.frame = requested.rectValue;
+                if (!DPEdgeToEdge.on) {
+                    NSValue *requested = DPRequestedFrame(container);
+                    if (requested && DPMayAdjust(container)) container.frame = requested.rectValue;
+                }
             }
         }
         DPRestyleContainer(container);
