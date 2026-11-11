@@ -37,6 +37,7 @@
 #define DPDiaColorView          "_TtC5ARCUI19BackgroundColorView"
 #define DPDiaColorFill          "_TtC5ARCUI19BackgroundColorView"
 #define DPDiaBrowser            "ArcBrowser"
+#define DPDiaAppDelegate       "_TtC15BoostBrowserMac11AppDelegate"
 #define DPDiaBrowserDelegate    "_TtC3ADK15ChromiumBrowser"
 #define DPDiaWebContents        "ArcWebContents"  // A tab's page, declared in ArcCore's ArcWebContents.h.
 #define DPDiaNavigationController "ArcWebContentsNavigationController"

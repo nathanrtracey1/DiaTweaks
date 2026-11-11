@@ -12,11 +12,18 @@ PASSKEYS := src/dylib/Patches/Passkeys/extension
 EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file))
 
 DYLIB_OBJS := $(patsubst src/dylib/%.m,build/obj/%.o,$(filter %.m,$(DYLIB_SOURCES)))
+# diapatch records the commit it was built from, to tell a source build that is newer than the latest release from one that isn't.
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 
 all: build/diapatch build/DiaPatches.dylib build/patches.json
 
-build/diapatch: $(wildcard src/diapatch/*.[hm]) | build
-	clang $(CFLAGS) -framework AppKit -framework CoreGraphics -framework Security -o $@ $(filter %.m,$^)
+build/commit: FORCE | build
+	@echo '$(COMMIT)' | cmp -s - $@ || echo '$(COMMIT)' > $@
+
+FORCE:
+
+build/diapatch: $(wildcard src/diapatch/*.[hm]) build/commit | build
+	clang $(CFLAGS) -DDIATWEAKS_COMMIT='"$(COMMIT)"' -framework AppKit -framework CoreGraphics -framework Security -o $@ $(filter %.m,$^)
 
 build/DiaPatchesSwift.o: $(DYLIB_SWIFT) | build
 	swiftc $(SWIFTFLAGS) -emit-object -o $@ $^
@@ -50,8 +57,9 @@ build/vertical-tab-glow: tests/vertical-tab-glow.m $(wildcard src/dylib/Patches/
 build/profile-symbols: tests/profile-symbols.m src/dylib/Patches/ProfileEmoji/Symbols.m | build
 	clang $(CFLAGS) -Isrc/dylib -framework AppKit -o $@ $^
 
-# Checks that need no Dia: grouping, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, Profile Emoji symbol search, and that Settings shows each tweak like its neighbours.
-check: build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/profile-symbols build/patches.json
+# Checks that need no Dia: grouping, the DiaTweaks update decision, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, Profile Emoji symbol search, and that Settings shows each tweak like its neighbours.
+check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/profile-symbols build/patches.json
+	tests/tweaks-update
 	build/group-tabs
 	build/mouse-back-forward
 	build/vertical-tab-glow

@@ -87,6 +87,16 @@ NSString *DPRelayProblem(void) {
     return nil;
 }
 
+// A folder Dia may not write to was usually made by something running as root, and taking it back fixes it.
+NSString *DPWriteProblem(NSString *path, NSError *error) {
+    path = error.userInfo[NSFilePathErrorKey] ?: path;
+    NSString *problem = [NSString stringWithFormat:@"Couldn’t write %@: %@", path, error.localizedDescription];
+    if (error.code != NSFileWriteNoPermissionError) return problem;
+    NSString *folder = path.stringByDeletingLastPathComponent;
+    if ([folder hasPrefix:NSHomeDirectory()]) folder = [@"$HOME" stringByAppendingString:[folder substringFromIndex:NSHomeDirectory().length]];
+    return [problem stringByAppendingFormat:@" To fix it, run sudo chown -R \"$(whoami)\" \"%@\" && chmod -R u+w \"%@\" in Terminal, then turn this on again.", folder, folder];
+}
+
 NSString *DPHostProblem(NSString *manifest, NSString *name) {
     NSData *data = [NSData dataWithContentsOfFile:manifest];
     if (!data) return [NSString stringWithFormat:@"%@ couldn’t be written.", manifest];

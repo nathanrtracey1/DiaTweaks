@@ -1,4 +1,5 @@
 #import "StdPatch/StdPatch.h"
+#import "Patches/CommandBar/Tabs.h"
 
 extern DPPatch DPCommandBar, DPCommandBarBlur, DPCommandBarDarken, DPCommandBarShadow, DPCommandBarInteractive, DPCommandBarKeepText;
 static char DPOverlayKey, DPHomeKey, DPRecentKey, DPBlankKey, DPSplitKey, DPOwnBarKey, DPLeftTextKey, DPClosedAtKey;
@@ -58,23 +59,6 @@ static BOOL DPIsShortcut(NSEvent *event, NSString *menuTitle) {
 }
 
 #pragma mark Tabs
-
-static id DPScriptWindow(NSWindow *window) {
-    for (id scripted in [(id)NSApp.delegate valueForKey:@"appleScriptWindows"])
-        if ([[scripted valueForKey:@"windowId"] isEqual:window.identifier]) return scripted;
-    return nil;
-}
-
-static id DPScriptTab(NSWindow *window, NSString *tabID) {
-    for (id tab in [DPScriptWindow(window) valueForKey:@"appleScriptTabs"])
-        if ([[tab valueForKey:@"tabId"] isEqual:tabID]) return tab;
-    return nil;
-}
-
-static NSString *DPTabID(id tab) { return [tab valueForKey:@"tabId"]; }
-static NSString *DPActiveTabID(NSWindow *window) { return DPTabID([DPScriptWindow(window) valueForKey:@"activeTab"]); }
-static void DPFocusTab(id tab) { [tab performSelector:@selector(focus:) withObject:nil]; }
-static void DPCloseTab(id tab) { [tab performSelector:@selector(close:) withObject:nil]; }
 
 static void DPNoteActiveTab(NSWindow *window) {
     NSString *active = DPActiveTabID(window);
@@ -367,15 +351,9 @@ static void DPWatchSoon(DPCommandBarOverlay *overlay, int checks) {
 
 static id DPWatchKeys(DPCommandBarOverlay *overlay) {
     __weak DPCommandBarOverlay *weak = overlay;
-    return [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown | NSEventMaskLeftMouseDown | NSEventMaskLeftMouseUp handler:^NSEvent *(NSEvent *event) {
+    return [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown | NSEventMaskLeftMouseUp handler:^NSEvent *(NSEvent *event) {
         DPCommandBarOverlay *overlay = weak;
         if (!overlay || event.window != overlay.host) return event;
-        // The page is under the bar, so a click closes it first and then lands on the page.
-        if (event.type == NSEventTypeLeftMouseDown) {
-            NSRect bar = [overlay.panel convertRect:overlay.panel.bounds toView:nil];
-            if (DPCommandBarInteractive.on && !NSMouseInRect(event.locationInWindow, bar, NO)) DPCancelCommandBar(overlay);
-            return event;
-        }
         if (event.type == NSEventTypeLeftMouseUp || event.keyCode == 36 || event.keyCode == 76) {
             overlay.picked = overlay.picked || DPBarText(overlay).string.length > 0;
             if (overlay.openedTab) DPWatchSoon(overlay, 60);
@@ -434,6 +412,7 @@ static CGFloat DPStyleAsNewTab(NSView *panel) {
     *top = 21;
     bar.needsLayout = YES;  // So a tweak measuring it while the panel sizes sees it styled.
     [bar layoutSubtreeIfNeeded];
+    [text scrollRangeToVisible:text.selectedRange];  // The layout scrolls a long URL back to its start.
     return grown;
 }
 
@@ -882,7 +861,7 @@ DP_PATCH(DPCommandBarInteractive) {
     .defaultOn = YES,
     .order = 91,
     .title = @"Scroll Page Behind",
-    .detail = @"Scroll the page behind the command bar while it's open, like Arc. The pointer doesn't highlight it; clicking closes the bar and acts on the page.",
+    .detail = @"Scroll the page behind the command bar while it's open, like Arc. The pointer doesn't highlight it, and clicking outside closes the bar without clicking the page.",
     .symbol = @"cursorarrow.rays",
     .tint = @"systemOrangeColor",
     .requires = @"commandBar",
