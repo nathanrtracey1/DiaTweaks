@@ -1,5 +1,5 @@
 // What a boost turns into, without Dia:
-// clang -fobjc-arc -Isrc/dylib -framework AppKit tests/boosts.m src/dylib/Patches/Boosts/Rules.m -o build/boosts && build/boosts
+// clang -fobjc-arc -Isrc/dylib -framework AppKit tests/boosts.m src/dylib/Patches/Boosts/Rules.m src/dylib/Patches/Boosts/Tint.m -o build/boosts && build/boosts
 #import "Patches/Boosts/Boosts.h"
 #import <assert.h>
 
@@ -21,6 +21,17 @@ int main(void) {
         assert([DPBoostHosts(@"example.com") isEqual:(@[ @"example.com", @"www.example.com" ])]);
         assert([DPBoostSiteName(@"en.wikipedia.org") isEqual:@"Wikipedia"] && [DPBoostSiteName(@"bbc.co.uk") isEqual:@"Bbc"]);
         assert([DPBoostSiteName(@"x.com") isEqual:@"X"] && [DPBoostSiteName(@"github.com") isEqual:@"Github"]);
+
+        // The look: a color, a size and a case each add their rule, and only values the buttons can give get through.
+        NSDictionary *look = DPCleanBoost(@{ @"color" : @{ @"hue" : @400, @"sat" : @60, @"dark" : @YES }, @"size" : @125, @"case" : @"uppercase" });
+        assert([look[@"color"] isEqual:(@{ @"hue" : @360, @"sat" : @60, @"light" : @0, @"dark" : @YES })]);
+        css = DPBoostStylesheet(look);
+        assert([css containsString:@"html, body { background-color: hsl(360 60% 8.0%) !important; color: hsl(360 36% 95.0%) !important; }"]);
+        assert([css containsString:@"html { zoom: 1.25 !important; }"] && [css containsString:@"{ text-transform: uppercase !important; }"]);
+        assert([DPBoostTintScript(look) containsString:@"\"h\":360"] && [DPBoostTintScript(look) containsString:@"\"dark\":true"]);
+        assert([DPBoostTintScript(nil) hasSuffix:@"})(null)"]);
+        NSDictionary *odd = DPCleanBoost(@{ @"color" : @"red", @"size" : @7, @"case" : @"none; } body { display: none" });
+        assert(!odd[@"color"] && [odd[@"size"] isEqual:@100] && [odd[@"case"] isEqual:@""]);
 
         // A selector can't end its rule: the picker's answer comes back through the page.
         NSArray *sneaky = @[ @{ @"selector" : @"p } body { display: none" }, @{ @"selector" : @"a /* rest" }, @{ @"selector" : @"div.ok" } ];

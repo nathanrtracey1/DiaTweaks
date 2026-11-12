@@ -1,20 +1,28 @@
 // Boosts, like Arc's: per-site hidden elements, font, CSS and JavaScript. Dia ships the engine Arc's Boosts use
-// (ArcBrowserContextEffects) but never calls it, so this registers each boost there.
+// (ArcBrowserContextEffects) but never calls it, so this registers each boost there. The editor is laid out like Arc's.
 #import "StdPatch/StdPatch.h"
 #import "Commands/GroupTabs/GroupTabs.h"
 
 extern DPPatch DPBoosts;
 
 // Rules.m: what a boost turns into. Foundation only, so tests/boosts.m builds it on its own. A boost is a dictionary:
-// enabled, zaps (@[ @{ selector, label } ]), font, css, js.
+// enabled, zaps (@[ @{ selector, label } ]), color (@{ hue, sat, light, dark }, only once one is picked), font, size (a
+// percentage), case (a text-transform), css, js.
 NSString *DPBoostStylesheet(NSDictionary *boost);
 NSArray<NSString *> *DPBoostHosts(NSString *domain);
 NSString *DPBoostSiteName(NSString *domain);
 BOOL DPIsBoostDomain(NSString *domain);
+NSArray<NSNumber *> *DPBoostSizes(void);
+NSArray<NSString *> *DPBoostCases(void);
 NSDictionary *DPCleanBoost(id raw);  // Known fields of the right types, with defaults; nil if it isn't a dictionary.
 // A .diaboost file is JSON: { format: "diatweaks-boost", version: 1, domain, boost }.
 NSData *DPBoostFileData(NSString *domain, NSDictionary *boost);
 NSDictionary *DPBoostFromFileData(NSData *data, NSString **domain, NSString **problem);  // nil and a sentence in problem.
+
+// Tint.m: a boost's color on a page. Foundation only too.
+NSDictionary *DPBoostPalette(NSDictionary *color);  // What the stylesheet, the script and the editor's swatches agree on.
+NSString *DPBoostTintRule(NSDictionary *color);     // "" without a color.
+NSString *DPBoostTintScript(NSDictionary *boost);   // Recolors the page it runs on, or gives it its colors back without one.
 
 // Boosts.m: saved in com.diapatches under "boostSites", keyed by domain.
 NSDictionary *DPBoostFor(NSString *domain);

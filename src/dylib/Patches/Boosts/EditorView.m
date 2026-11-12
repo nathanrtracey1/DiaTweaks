@@ -1,106 +1,93 @@
 #import "Patches/Boosts/Editor.h"
 
-static const CGFloat DPEditorWidth = 340, DPEditorInset = 14;
-
-// Monospaced, on the same ground as Settings' groups.
-static NSView *DPCodeBox(NSString *text, id<NSTextViewDelegate> delegate, NSTextView **editor) {
-    NSScrollView *scroll = [NSTextView scrollableTextView];
-    NSTextView *code = scroll.documentView;
-    code.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
-    code.textColor = NSColor.labelColor;
-    code.richText = NO;
-    code.allowsUndo = YES;
-    code.usesFindBar = YES;
-    code.automaticQuoteSubstitutionEnabled = code.automaticDashSubstitutionEnabled = code.automaticTextReplacementEnabled = NO;
-    code.automaticSpellingCorrectionEnabled = code.continuousSpellCheckingEnabled = code.automaticLinkDetectionEnabled = NO;
-    code.textContainerInset = NSMakeSize(6, 8);
-    code.drawsBackground = scroll.drawsBackground = NO;
-    code.string = text;
-    code.delegate = delegate;
-    DPFillView *box = [DPFillView new];
-    scroll.translatesAutoresizingMaskIntoConstraints = NO;
-    [box addSubview:scroll];
-    [NSLayoutConstraint activateConstraints:@[
-        [scroll.leadingAnchor constraintEqualToAnchor:box.leadingAnchor], [scroll.trailingAnchor constraintEqualToAnchor:box.trailingAnchor],
-        [scroll.topAnchor constraintEqualToAnchor:box.topAnchor], [scroll.bottomAnchor constraintEqualToAnchor:box.bottomAnchor],
-        [box.heightAnchor constraintEqualToConstant:110],
-    ]];
-    *editor = code;
-    return box;
-}
-
-// "Site’s Own" first, then every family. A saved font that's no longer installed stays listed, so it isn't lost.
-static NSPopUpButton *DPFontPicker(NSString *font) {
-    NSPopUpButton *picker = [NSPopUpButton new];
-    picker.controlSize = NSControlSizeSmall;
-    picker.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
-    [picker addItemWithTitle:@"Site’s Own"];
-    picker.lastItem.representedObject = @"";
-    [picker.menu addItem:NSMenuItem.separatorItem];
-    NSArray *families = NSFontManager.sharedFontManager.availableFontFamilies;
-    for (NSString *family in [families containsObject:font] || !font.length ? families : [@[ font ] arrayByAddingObjectsFromArray:families]) {
-        [picker addItemWithTitle:family];
-        picker.lastItem.representedObject = family;
-    }
-    [picker selectItemAtIndex:MAX(0, [picker indexOfItemWithRepresentedObject:font])];
-    return picker;
-}
+static const CGFloat DPLookWidth = 184, DPCodeWidth = 340, DPEditorInset = 18;
 
 @implementation DPBoostEditor (Layout)
 
-- (NSView *)makeContent:(NSDictionary *)boost {
-    self.enabled = [NSSwitch new];
-    self.enabled.state = [boost[@"enabled"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
-    self.enabled.target = self;
-    self.enabled.action = @selector(changed:);
-    NSTextField *site = DPBoostLabel(@"");
-    site.attributedStringValue = DPBoostTitle(DPBoostSiteName(self.domain), self.domain, NSFontWeightSemibold);
-    NSString *domain = self.domain;
-    if ([DPFrontDomain() isEqual:domain])
-        DPPageSiteName(DPFrontContents(), ^(NSString *name) { site.attributedStringValue = DPBoostTitle(name, domain, NSFontWeightSemibold); });
-    NSStackView *heading = [NSStackView stackViewWithViews:@[ DPBoostFavicon(self.domain, 16), site ]];
+// Arc's title bar: close, the Boost's name over a menu, and reset. A Boost here is a site's, so it has the site's name.
+- (NSView *)makeHeading {
+    NSPopUpButton *menu = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:YES];
+    menu.bordered = NO;
+    menu.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
+    [menu setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [menu addItemWithTitle:DPBoostSiteName(self.domain)];
+    [menu.menu addItemWithTitle:self.domain action:nil keyEquivalent:@""];
+    self.onItem = [menu.menu addItemWithTitle:@"Boost On" action:@selector(toggleOn:) keyEquivalent:@""];
+    self.onItem.state = [self.boost[@"enabled"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
+    [menu.menu addItem:NSMenuItem.separatorItem];
+    [menu.menu addItemWithTitle:@"Import Boost File…" action:@selector(importBoost:) keyEquivalent:@""];
+    [menu.menu addItemWithTitle:@"Export Boost File…" action:@selector(exportBoost:) keyEquivalent:@""];
+    [menu.menu addItem:NSMenuItem.separatorItem];
+    [menu.menu addItemWithTitle:@"Delete Boost…" action:@selector(deleteBoost:) keyEquivalent:@""];
+    for (NSMenuItem *item in menu.itemArray) item.target = self;
+    __weak NSPopUpButton *weakMenu = menu;
+    if ([DPFrontDomain() isEqual:self.domain]) DPPageSiteName(DPFrontContents(), ^(NSString *name) { weakMenu.title = name; });
 
-    NSView *hidden = [self makeZapGroup];
-    self.font = DPFontPicker(boost[@"font"]);
-    self.font.target = self;
-    self.font.action = @selector(changed:);
+    NSStackView *heading = [NSStackView new];
+    [heading addView:DPBoostIconButton(@"xmark.circle.fill", @"Close", self, @selector(closeEditor:)) inGravity:NSStackViewGravityLeading];
+    [heading addView:menu inGravity:NSStackViewGravityCenter];
+    [heading addView:DPBoostIconButton(@"arrow.counterclockwise", @"Reset Colors, Font, Size and Case", self, @selector(resetLook:)) inGravity:NSStackViewGravityTrailing];
+    return heading;
+}
 
-    NSTextView *css, *js;
-    NSView *cssBox = DPCodeBox(boost[@"css"], self, &css), *jsBox = DPCodeBox(boost[@"js"], self, &js);
-    self.css = css;
-    self.js = js;
-    NSTextField *jsHint = DPLabel(@"Runs as each page of the site loads. Reload the page to try a change.", 11, NSFontWeightRegular, NSColor.secondaryLabelColor);
-
-    NSPopUpButton *more = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:YES];
-    more.controlSize = NSControlSizeSmall;
-    more.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
-    [more addItemWithTitle:@"Options"];
-    [more.menu addItemWithTitle:@"Import Boost File…" action:@selector(importBoost:) keyEquivalent:@""].target = self;
-    [more.menu addItemWithTitle:@"Export Boost File…" action:@selector(exportBoost:) keyEquivalent:@""].target = self;
-    [more.menu addItem:NSMenuItem.separatorItem];
-    [more.menu addItemWithTitle:@"Delete Boost…" action:@selector(deleteBoost:) keyEquivalent:@""].target = self;
-    NSStackView *footer = [NSStackView new];
-    [footer addView:more inGravity:NSStackViewGravityTrailing];
-
-    NSStackView *content = [NSStackView new];
-    DPFillStack(content, @[
-        DPGroup(@[ DPRow(heading, self.enabled) ]), DPHeader(@"Hidden"), hidden,
-        DPGroup(@[ DPRow(DPLabel(@"Font", 13, NSFontWeightRegular, NSColor.labelColor), self.font) ]),
-        DPHeader(@"CSS"), cssBox, DPHeader(@"JavaScript"), jsBox, jsHint, footer,
+// Under the pad: light or dark, a slider for how light, and the site's own colors again.
+- (NSView *)makeColorTiles {
+    self.bulb = DPSymbol(@"lightbulb", 13, NSColor.labelColor);
+    self.noColor = DPSymbol(@"nosign", 13, NSColor.labelColor);
+    self.light = [NSSlider sliderWithValue:50 minValue:0 maxValue:100 target:self action:@selector(lightChanged:)];
+    self.light.controlSize = NSControlSizeSmall;
+    self.light.accessibilityLabel = @"Brightness";
+    self.light.hidden = YES;
+    return DPBoostTileRow(@[
+        DPBoostTile(self.bulb, @"Light or Dark", self, @selector(toggleDark:)),
+        DPBoostTile(DPSymbol(@"slider.horizontal.3", 13, NSColor.labelColor), @"Brightness", self, @selector(toggleLight:)),
+        DPBoostTile(self.noColor, @"No Color", self, @selector(clearColor:)),
     ]);
-    [content setCustomSpacing:6 afterView:jsBox];
+}
+
+- (NSView *)makeContent {
+    self.pad = [DPBoostColorPad new];
+    __weak DPBoostEditor *weakSelf = self;
+    self.pad.picked = ^(double hue, double sat, BOOL done) { [weakSelf pickHue:hue sat:sat done:done]; };
+    NSView *colors = [self makeColorTiles];
+    self.fonts = DPBoostFontGrid(self, @selector(pickFont:));
+    self.sizeLabel = DPBoostTileLabel(@"Size");
+    self.caseLabel = DPBoostTileLabel(@"Case");
+    NSView *text = DPBoostTileRow(@[ DPBoostTile(self.sizeLabel, @"Size", self, @selector(nextSize:)), DPBoostTile(self.caseLabel, @"Case", self, @selector(nextCase:)) ]);
+    NSView *code = DPBoostBarTile(DPBoostTileLabel(@"Code"), DPSymbol(@"curlybraces", 13, NSColor.labelColor), @"Code", self, @selector(showCodePage:));
+
+    NSStackView *look = [NSStackView new];
+    DPFillStack(look, @[ [self makeHeading], self.pad, colors, self.light, self.fonts, text, [self makeZapGroup], code ]);
+    look.spacing = 12;
+    for (NSView *view in look.arrangedSubviews) [look setCustomSpacing:NSStackViewSpacingUseDefault afterView:view];  // DPFillStack leaves more after a group.
+    self.look = look;
+    self.code = [self makeCodePage];
+    self.code.hidden = YES;
+    NSStackView *pages = DPColumn(@[ self.look, self.code ], 0);  // A stack lays out only the page that shows.
+    for (NSView *page in pages.arrangedSubviews) [page.widthAnchor constraintEqualToAnchor:pages.widthAnchor].active = YES;
+
     NSView *root = [DPFlippedView new];  // Growing, it keeps what's in it where it was from the top, not the bottom, until laid out.
-    content.translatesAutoresizingMaskIntoConstraints = NO;
-    [root addSubview:content];
+    pages.translatesAutoresizingMaskIntoConstraints = NO;
+    [root addSubview:pages];
+    self.width = [root.widthAnchor constraintEqualToConstant:DPLookWidth];
     [NSLayoutConstraint activateConstraints:@[
-        [content.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:DPEditorInset],
-        [content.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-DPEditorInset],
-        [content.topAnchor constraintEqualToAnchor:root.topAnchor constant:DPEditorInset],
-        // The Options button draws its bezel a couple of points inside its frame, so it looks as far from the bottom as from the side.
-        [content.bottomAnchor constraintLessThanOrEqualToAnchor:root.bottomAnchor constant:-(DPEditorInset - 2)],  // Stays put while the popover resizes.
-        [root.widthAnchor constraintEqualToConstant:DPEditorWidth],
+        [pages.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:DPEditorInset],
+        [pages.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-DPEditorInset],
+        [pages.topAnchor constraintEqualToAnchor:root.topAnchor constant:DPEditorInset],
+        [pages.bottomAnchor constraintLessThanOrEqualToAnchor:root.bottomAnchor constant:-DPEditorInset],  // Stays put while the popover resizes.
+        self.width,
     ]];
     return root;
 }
+
+- (void)showCode:(BOOL)code {
+    self.look.hidden = code;
+    self.code.hidden = !code;
+    self.width.constant = code ? DPCodeWidth : DPLookWidth;
+    [self fit];
+}
+
+- (void)showCodePage:(id)sender { [self showCode:YES]; }
+- (void)showLookPage:(id)sender { [self showCode:NO]; }
 
 @end

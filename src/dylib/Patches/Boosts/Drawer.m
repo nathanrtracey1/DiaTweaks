@@ -35,13 +35,7 @@ static char DPHeightKey;  // A row's height, which opens and closes it.
     double eased = t < 0.5 ? 4 * t * t * t : 1 - pow(2 - 2 * t, 3) / 2;
     self.height.constant = self.from + (self.to - self.from) * eased;
     self.row.alphaValue = self.to > self.from ? eased : 1 - eased;
-    NSPopover *popover = self.editor.popover;
-    NSSize size = self.editor.view.fittingSize;
-    if (!NSEqualSizes(size, popover.contentSize)) {
-        popover.animates = NO;
-        popover.contentSize = size;
-        popover.animates = YES;
-    }
+    [self.editor fit];
     [self.editor.view layoutSubtreeIfNeeded];
     if (t < 1) return;
     [link invalidate];
@@ -80,8 +74,8 @@ NSView *DPDrawerRow(NSView *content, BOOL open) {
 @implementation DPBoostEditor (Drawer)
 
 // A row opens and closes like a drawer: its height goes to or from 0 with what's in it pinned to its top, so nothing in
-// it moves while everything under it slides. NSPopover's own resizing runs on its own clock and jolts its top, so the
-// height, the fade and the popover's size all step here together, each frame, the popover's size taken at once.
+// it moves while everything under it slides. The height, the fade and the popover's size all step here together, each
+// frame, the popover's size taken at once.
 - (void)open:(BOOL)open row:(NSView *)row done:(void (^)(void))done {
     DPRowDrawer *drawer = [DPRowDrawer new];
     drawer.editor = self;

@@ -21,19 +21,21 @@ static NSDictionary *DPActiveBoost(NSString *domain) {
 // Effects match a host exactly and reach pages as they start loading.
 static void DPRegister(id effects, NSString *host, NSDictionary *boost) {
     if (!effects) return;
-    NSString *scriptID = [@"diatweaks.boost.js." stringByAppendingString:host];
+    NSString *scriptID = [@"diatweaks.boost.js." stringByAppendingString:host], *tintID = [@"diatweaks.boost.tint." stringByAppendingString:host];
     void (*unregister)(id, SEL, NSString *) = (void *)objc_msgSend;
     unregister(effects, @selector(unregisterStylesheet:), DPSheetID(host));
-    unregister(effects, @selector(unregisterScript:), scriptID);
+    for (NSString *script in @[ scriptID, tintID ]) unregister(effects, @selector(unregisterScript:), script);
     if (!boost) return;
     void (*add)(id, SEL, NSString *, NSString *, NSString *) = (void *)objc_msgSend;
     NSString *sheet = DPBoostStylesheet(boost);
     if (sheet.length) add(effects, @selector(registerStylesheet:withIdentifier:forHostPattern:), sheet, DPSheetID(host), host);
+    if (boost[@"color"]) add(effects, @selector(registerScript:withIdentifier:forHostPattern:), DPBoostTintScript(boost), tintID, host);  // Its own, so a mistake in the boost's script can't stop it.
     if ([boost[@"js"] length]) add(effects, @selector(registerScript:withIdentifier:forHostPattern:), boost[@"js"], scriptID, host);
 }
 
 // Pages already open keep the stylesheet Effects gave them as they loaded. A tab's own stylesheet under the same
-// identifier replaces it at once, which is how the editor's changes show live. Scripts wait for a reload.
+// identifier replaces it at once, which is how the editor's changes show live, and the tint script paints the page
+// again. The boost's own script waits for a reload.
 static void DPRestyleOpenTabs(NSArray<NSString *> *hosts, NSDictionary *boost) {
     NSString *sheet = boost ? DPBoostStylesheet(boost) : @"";
     void (*remove)(id, SEL, NSString *) = (void *)objc_msgSend;
@@ -44,6 +46,7 @@ static void DPRestyleOpenTabs(NSArray<NSString *> *hosts, NSDictionary *boost) {
             if (!host || ![hosts containsObject:host] || ![contents respondsToSelector:@selector(insertStylesheet:stylesheet:)]) continue;
             remove(contents, @selector(removeStylesheet:), DPSheetID(host));
             if (sheet.length) insert(contents, @selector(insertStylesheet:stylesheet:), DPSheetID(host), sheet);
+            DPRunScript(contents, DPBoostTintScript(boost), ^(NSString *_) {});
         }
 }
 

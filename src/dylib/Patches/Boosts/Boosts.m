@@ -67,7 +67,7 @@ DP_PATCH(DPBoosts) {
     .key = @"boosts",
     .order = 11,
     .title = @"Boosts",
-    .detail = @"Restyle any site like Arc’s Boosts: hide parts of it, change its font, or add your own CSS and JavaScript.",
+    .detail = @"Restyle any site like Arc’s Boosts: recolor it, change its font, text size and case, hide parts of it, or add your own CSS and JavaScript.",
     .hint = @"Tip: click the paintbrush in the address field to boost the site you’re on.",
     .symbol = @"paintbrush.pointed.fill paintbrush.fill",
     .tint = @"systemBlueColor",

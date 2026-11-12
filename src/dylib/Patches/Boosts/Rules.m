@@ -7,7 +7,11 @@ NSString *DPBoostStylesheet(NSDictionary *boost) {
     NSMutableString *css = [NSMutableString new];
     for (NSDictionary *zap in boost[@"zaps"])  // One rule each, so a bad selector only loses itself.
         [css appendFormat:@"%@ { display: none !important; }\n", zap[@"selector"]];
+    [css appendString:DPBoostTintRule(boost[@"color"])];
     if ([boost[@"font"] length]) [css appendFormat:@"%@ { font-family: \"%@\" !important; }\n", DPNotIcons, boost[@"font"]];
+    double size = [boost[@"size"] doubleValue];
+    if (size && size != 100) [css appendFormat:@"html { zoom: %g !important; }\n", size / 100];
+    if ([boost[@"case"] length]) [css appendFormat:@"%@ { text-transform: %@ !important; }\n", DPNotIcons, boost[@"case"]];
     [css appendString:boost[@"css"] ?: @""];
     return css;
 }
@@ -27,9 +31,15 @@ NSString *DPBoostSiteName(NSString *domain) {
     return [[name substringToIndex:1].uppercaseString stringByAppendingString:[name substringFromIndex:1]];
 }
 
+// What the Size and Case buttons step through, the site's own first.
+NSArray<NSNumber *> *DPBoostSizes(void) { return @[ @100, @110, @125, @150, @90 ]; }
+NSArray<NSString *> *DPBoostCases(void) { return @[ @"", @"uppercase", @"lowercase", @"capitalize" ]; }
+
 static NSString *const DPBoostFormat = @"diatweaks-boost";
 
 static id DPOf(id value, Class cls) { return [value isKindOfClass:cls] ? value : nil; }
+static NSNumber *DPWithin(id value, double low, double high) { return @(round(MIN(MAX([DPOf(value, NSNumber.class) doubleValue], low), high))); }
+static id DPOneOf(NSArray *choices, id value) { return [choices containsObject:value] ? value : choices[0]; }
 
 BOOL DPIsBoostDomain(NSString *domain) {
     static NSRegularExpression *host;
@@ -56,10 +66,15 @@ NSDictionary *DPCleanBoost(id raw) {
     }
     NSCharacterSet *breaksOut = [NSCharacterSet characterSetWithCharactersInString:@"\"\\{};<>\n"];  // The font sits inside a CSS string.
     NSString *font = [[DPOf(boost[@"font"], NSString.class) ?: @"" componentsSeparatedByCharactersInSet:breaksOut] componentsJoinedByString:@""];
-    return @{
+    NSMutableDictionary *clean = [@{
         @"enabled" : @([DPOf(boost[@"enabled"], NSNumber.class) ?: @YES boolValue]), @"zaps" : zaps, @"font" : font,
+        @"size" : DPOneOf(DPBoostSizes(), boost[@"size"]), @"case" : DPOneOf(DPBoostCases(), boost[@"case"]),
         @"css" : DPOf(boost[@"css"], NSString.class) ?: @"", @"js" : DPOf(boost[@"js"], NSString.class) ?: @"",
-    };
+    } mutableCopy];
+    NSDictionary *color = DPOf(boost[@"color"], NSDictionary.class);  // Left out while the site keeps its own colors.
+    if (color) clean[@"color"] = @{ @"hue" : DPWithin(color[@"hue"], 0, 360), @"sat" : DPWithin(color[@"sat"], 0, 100),
+                                    @"light" : DPWithin(color[@"light"], 0, 100), @"dark" : @([DPOf(color[@"dark"], NSNumber.class) boolValue]) };
+    return clean;
 }
 
 NSData *DPBoostFileData(NSString *domain, NSDictionary *boost) {

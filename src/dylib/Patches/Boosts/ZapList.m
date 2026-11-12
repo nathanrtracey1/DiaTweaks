@@ -5,13 +5,13 @@ static char DPZapKey;  // The zap a row's button shows again.
 
 @implementation DPBoostEditor (ZapList)
 
-// The Zap row, then what it hid, newest first, each under a line like a group's. The list scrolls past DPZapListHeight,
-// so the popover stops growing there.
+// Arc's Zap button, then what it hid, newest first, each under a line like a group's. The list scrolls past
+// DPZapListHeight, so the popover stops growing there.
 - (NSView *)makeZapGroup {
-    self.zapButton = [NSButton buttonWithTitle:@"" target:self action:@selector(zap:)];
-    self.zapButton.controlSize = NSControlSizeSmall;
-    self.zapHow = DPBoostLabel(@"");
-    NSView *zapRow = DPRow(self.zapHow, self.zapButton);
+    self.zapHow = DPBoostTileLabel(@"");
+    self.bolt = DPSymbol(@"bolt.fill", 13, NSColor.labelColor);
+    __weak DPBoostEditor *weakSelf = self;
+    NSView *zapRow = DPLinkRow(DPRow(self.zapHow, self.bolt), @"Zap", ^{ [weakSelf zap:nil]; });
 
     self.zapRows = [NSStackView new];
     self.zapRows.orientation = NSUserInterfaceLayoutOrientationVertical;
@@ -43,8 +43,8 @@ static char DPZapKey;  // The zap a row's button shows again.
 }
 
 - (void)showZapping {
-    self.zapButton.title = self.zapping ? @"Done" : @"Zap…";
-    self.zapHow.stringValue = self.zapping ? @"Click what you want to hide" : @"Hide part of the page";
+    self.zapHow.stringValue = self.zapping ? @"Done" : @"Zap";
+    self.bolt.contentTintColor = self.zapping ? NSColor.systemPinkColor : NSColor.labelColor;
 }
 
 // One thing hidden, under a line like a group's.

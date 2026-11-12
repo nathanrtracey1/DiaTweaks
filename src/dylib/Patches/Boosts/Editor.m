@@ -5,9 +5,10 @@
 - (instancetype)initWithDomain:(NSString *)domain {
     if (!(self = [super initWithNibName:nil bundle:nil])) return nil;
     _domain = domain;
-    NSDictionary *boost = DPBoostFor(domain) ?: DPCleanBoost(@{});
-    _zaps = [boost[@"zaps"] mutableCopy];
-    self.view = [self makeContent:boost];
+    _boost = [DPBoostFor(domain) ?: DPCleanBoost(@{}) mutableCopy];
+    _zaps = [_boost[@"zaps"] mutableCopy];
+    self.view = [self makeContent];
+    [self showLook];
     _popover = [NSPopover new];
     _popover.behavior = NSPopoverBehaviorApplicationDefined;  // See -popoverDidShow:.
     _popover.contentViewController = self;
@@ -18,31 +19,44 @@
 - (void)save {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(save) object:nil];
     self.dirty = NO;
-    DPSaveBoost(self.domain, DPCleanBoost(@{
-        @"enabled" : @(self.enabled.state == NSControlStateValueOn), @"zaps" : self.zaps.copy,
-        @"font" : self.font.selectedItem.representedObject ?: @"", @"css" : self.css.string.copy, @"js" : self.js.string.copy,
-    }));
+    [self.boost addEntriesFromDictionary:@{ @"zaps" : self.zaps.copy, @"css" : self.css.string.copy, @"js" : self.js.string.copy }];
+    DPSaveBoost(self.domain, DPCleanBoost(self.boost));
 }
 
-- (void)changed:(id)sender { [self save]; }
-
-- (void)textDidChange:(NSNotification *)notification {
+// Typing saves once it has stopped for `delay`. A drag saves every `delay`, in the slider's run loop mode too.
+- (void)saveIn:(NSTimeInterval)delay restarting:(BOOL)restart {
+    if (self.dirty && !restart) return;
     self.dirty = YES;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(save) object:nil];
-    [self performSelector:@selector(save) withObject:nil afterDelay:0.4];
+    [self performSelector:@selector(save) withObject:nil afterDelay:delay inModes:@[ NSRunLoopCommonModes ]];
 }
 
-// Each click on the page hides what's under it, until Escape or Done. The popover stays open meanwhile, listing them.
+- (void)textDidChange:(NSNotification *)notification { [self saveIn:0.4 restarting:YES]; }
+
+- (void)fit {
+    NSSize size = self.view.fittingSize;
+    if (NSEqualSizes(size, self.popover.contentSize)) return;
+    self.popover.animates = NO;  // Its own resizing runs on its own clock and jolts its top.
+    self.popover.contentSize = size;
+    self.popover.animates = YES;
+}
+
+- (void)closeEditor:(id)sender { [self.popover close]; }
+
+- (void)toggleOn:(id)sender {
+    self.boost[@"enabled"] = @(![self.boost[@"enabled"] boolValue]);
+    self.onItem.state = [self.boost[@"enabled"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
+    [self save];
+}
+
+// Each click on the page hides what's under it, until Escape or Zap again. The popover stays open meanwhile, listing them.
 - (void)zap:(id)sender {
     if (self.zapping) return DPStopPicking(self.zapping);
     id contents = DPFrontContents();
     if (!contents || ![DPFrontDomain() isEqual:self.domain]) return NSBeep();  // The front tab is another site now.
     self.zapping = contents;
     [self showZapping];
-    if (self.enabled.state != NSControlStateValueOn) {  // Zapping with the Boost off would hide nothing.
-        self.enabled.state = NSControlStateValueOn;
-        [self save];
-    }
+    if (![self.boost[@"enabled"] boolValue]) [self toggleOn:nil];  // Zapping with the Boost off would hide nothing.
     [self.browserWindow makeKeyWindow];  // The page only follows the pointer while its window is key.
     __weak DPBoostEditor *weakSelf = self;
     DPPickElements(contents, ^(NSDictionary *zap) {
