@@ -12,6 +12,7 @@
 + (NSString *)addModel:(NSString *)identifier model:(NSString *)model;
 + (void)refresh:(NSString *)identifier force:(BOOL)force completion:(void (^)(NSString *))completion;
 + (NSDictionary *)snapshot:(NSString *)identifier;
++ (void)ensureApple;
 + (NSString *)status:(NSString *)identifier;
 + (id)run:(NSDictionary *)body provider:(NSDictionary *)provider delta:(void (^)(NSString *))delta
     completion:(void (^)(NSDictionary *, NSString *))completion;

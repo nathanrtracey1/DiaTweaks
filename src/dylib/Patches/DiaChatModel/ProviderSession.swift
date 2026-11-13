@@ -23,6 +23,10 @@ import Foundation
                 let wire = ProviderWire(model: provider["model"] as? String ?? "", emit: chunk)
                 if provider["api"] as? String == "anthropic" {
                     try await streamAnthropic(payload, provider: provider, chunk: chunk, calls: calls)
+                } else if provider["api"] as? String == "apple" {
+                    let result = try await runAppleChat(payload, delta: wire.text)
+                    try Task.checkCancellation()
+                    try wire.finish(result, calls: calls)
                 } else {
                     let result = try await runOpenAIChat(payload, provider: provider, history: reasoning, delta: wire.text)
                     try Task.checkCancellation()

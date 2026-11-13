@@ -34,6 +34,7 @@ enum ProviderHTTP {
         }
     }
     static func catalog(_ account: ChatJSON) async throws -> [ChatJSON] {
+        if account["api"] as? String == "apple" { return try AppleProvider.catalog() }
         let session = session(); defer { session.invalidateAndCancel() }
         var catalog: [ChatJSON] = [], seen = Set<String>(), cursors = Set<String>()
         var cursor: String?

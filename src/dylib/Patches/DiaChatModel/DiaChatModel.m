@@ -63,6 +63,7 @@ static void DPInstallDiaChatModel(void) {
         if (DPDiaChatModel.on && DPTurnOffAI.on != gAppliedTurnOffAI) DPApplyDiaChatModel(&DPDiaChatModel);
     }];
     DPOnLaunch(^{
+        [DPChatProviders ensureApple];
         DPApplyDiaChatModel(&DPDiaChatModel);
         if (!DPTesting) for (NSDictionary *account in DPChatProviders.accounts)
             [DPChatProviders refresh:account[@"id"] force:NO completion:^(NSString *error) {}];

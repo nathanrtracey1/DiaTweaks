@@ -36,6 +36,7 @@
 }
 - (void)edit:(id)sender {
     NSDictionary *provider = [DPChatProviders account:self.identifier ?: @""];
+    if ([provider[@"api"] isEqual:@"apple"]) { [self problem:@"Apple Intelligence uses the on-device model and needs no API key."]; return; }
     if (provider) DPEditProvider(provider, self.window, ^(NSString *identifier) { [self reload]; });
 }
 - (void)remove:(id)sender {

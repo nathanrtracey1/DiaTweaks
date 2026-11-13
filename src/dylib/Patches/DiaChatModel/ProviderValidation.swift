@@ -3,8 +3,8 @@ import Foundation
 func validProvider(_ provider: ChatJSON) -> Bool {
     guard let id = provider["id"] as? String, UUID(uuidString: id) != nil,
           let name = provider["name"] as? String, !name.isEmpty,
-          let api = provider["api"] as? String, ["responses", "chat-completions", "anthropic"].contains(api),
-          let base = provider["baseURL"] as? String, (try? ProviderHTTP.base(base)) != nil,
+          let api = provider["api"] as? String, ["responses", "chat-completions", "anthropic", "apple"].contains(api),
+          let base = provider["baseURL"] as? String, api == "apple" || (try? ProviderHTTP.base(base)) != nil,
           provider["visibility"] is [String: Bool], provider["autoAdd"] is Bool,
           let catalog = provider["catalog"] as? [ChatJSON] else { return false }
     return catalog.allSatisfy { item in

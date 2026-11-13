@@ -49,7 +49,7 @@ enum ProviderStore {
 }
 
 enum ProviderError: LocalizedError {
-    case removed, invalidURL, keychain(Int32), authentication, rateLimited, unsupported, interrupted, invalidResponse, configuration
+    case removed, invalidURL, keychain(Int32), authentication, rateLimited, unsupported, interrupted, invalidResponse, configuration, appleUnavailable, appleContext
     var errorDescription: String? {
         switch self {
         case .removed: return "This provider account is no longer available."
@@ -61,6 +61,8 @@ enum ProviderError: LocalizedError {
         case .interrupted: return "The model response was interrupted before completion."
         case .invalidResponse: return "The provider returned an invalid response."
         case .configuration: return "The saved provider configuration could not be read. Restore it before saving changes."
+        case .appleUnavailable: return "Apple Intelligence is unavailable. Check that it is enabled and its model has finished downloading."
+        case .appleContext: return "This chat or tool result exceeds the on-device model’s context capacity."
         }
     }
 }
