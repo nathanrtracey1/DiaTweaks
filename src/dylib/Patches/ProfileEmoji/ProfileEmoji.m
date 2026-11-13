@@ -1,27 +1,17 @@
 #import "ProfileEmoji.h"
 
 static NSString *const DPEmojisKey = @"profileEmojis";
-<<<<<<< HEAD
-static const CGFloat DPSidebarEmojiSize = 13.5, DPSidebarEmojiWidth = 16, DPSidebarDotWidth = 6, DPSidebarGap = 10;
-static NSHashTable<NSViewController *> *DPProfilePanes;
-static char DPLabelKey, DPRowKey;
-=======
 NSString *const DPSymbolPrefix = @"symbol:";
 // The gap is between what's drawn, so emoji and dots sit the same distance apart in any mix.
 static const CGFloat DPSidebarEmojiSize = 13.5, DPSidebarEmojiWidth = 16, DPSidebarDotWidth = 6, DPSidebarGap = 10;
-static NSUserDefaults *DPEmojiDefaults;
+static NSHashTable<NSViewController *> *DPProfilePanes;
 static char DPLabelKey;
->>>>>>> pr-310-latest
 
 // A symbol this macOS doesn't have counts as no icon, so Dia's dot shows instead of the saved name.
 static NSString *DPEmoji(NSString *spaceID) {
-<<<<<<< HEAD
-    return DPProfileEmoji.on && spaceID ? [DPSettingsDefaults() dictionaryForKey:DPEmojisKey][spaceID] : nil;
-=======
     NSString *icon = DPProfileEmoji.on && spaceID ? DPSavedIcon(spaceID) : nil;
     if ([icon hasPrefix:DPSymbolPrefix] && !DPSymbolNamed([icon substringFromIndex:DPSymbolPrefix.length])) return nil;
     return icon;
->>>>>>> pr-310-latest
 }
 
 static NSString *DPSpaceIDOf(NSView *view, NSDictionary *views) {
@@ -29,7 +19,6 @@ static NSString *DPSpaceIDOf(NSView *view, NSDictionary *views) {
     return nil;
 }
 
-<<<<<<< HEAD
 static BOOL DPAnyEmoji(NSDictionary *views, NSDictionary *emojis) {
     for (id key in views) if (emojis[[key description]]) return YES;
     return NO;
@@ -41,20 +30,6 @@ static BOOL DPAnySidebarEmoji(NSView *switcher) {
     return emojis.count && DPAnyEmoji(DPSwiftValue(switcher, @"itemViews"), emojis);
 }
 
-static void DPShowEmoji(NSView *host, NSView *dot, NSString *emoji, CGFloat size, CGFloat alpha) {
-    NSTextField *label = DPGet(host, &DPLabelKey);
-    if (!emoji) {
-        if (!label) return;
-        if (dot.hidden) dot.hidden = NO;
-        [label removeFromSuperview];
-        DPSet(host, &DPLabelKey, nil);
-        return;
-    }
-    if (!dot.hidden) dot.hidden = YES;
-    BOOL resized = !label;
-    if (!label) {
-        label = [NSTextField labelWithString:@""];
-=======
 static NSImage *DPSymbolImage(NSString *icon, CGFloat size) {
     if (![icon hasPrefix:DPSymbolPrefix]) return nil;
     NSImage *image = DPSymbolNamed([icon substringFromIndex:DPSymbolPrefix.length]);
@@ -104,33 +79,17 @@ static void DPShowEmoji(NSView *host, NSView *dot, NSString *emoji, CGFloat size
         [image setFrameSize:symbol.size];
     } else {
         NSTextField *label = (NSTextField *)view;
->>>>>>> pr-310-latest
         label.alignment = NSTextAlignmentCenter;
         label.stringValue = emoji;
         label.font = [NSFont systemFontOfSize:size];
         [label sizeToFit];
     }
-<<<<<<< HEAD
-    if (![label.stringValue isEqual:emoji]) {
-        label.stringValue = emoji;
-        resized = YES;
-    }
-    if (fabs(label.font.pointSize - size) > 0.01) {
-        label.font = [NSFont systemFontOfSize:size];
-        resized = YES;
-    }
-    if (fabs(label.alphaValue - alpha) > 0.001) label.alphaValue = alpha;
-    if (resized) [label sizeToFit];
-    NSRect target = (NSRect){ { round(NSMidX(host.bounds) - label.frame.size.width / 2), round(NSMidY(host.bounds) - label.frame.size.height / 2) }, label.frame.size };
-    if (!NSEqualRects(label.frame, target)) label.frame = target;
-=======
     view.alphaValue = alpha;
     view.frame = (NSRect){ { round(NSMidX(host.bounds) - view.frame.size.width / 2), round(NSMidY(host.bounds) - view.frame.size.height / 2) }, view.frame.size };
->>>>>>> pr-310-latest
 }
 
 static void DPShowSidebarItem(NSView *item) {
-    NSTextField *existing = DPGet(item, &DPLabelKey);
+    NSView *existing = DPGet(item, &DPLabelKey);
     if (!DPProfileEmoji.on && !existing) return;
     NSString *emoji = DPEmoji(DPSpaceIDOf(item, DPSwiftValue(item.superview, @"itemViews")));
     BOOL any = emoji || DPAnySidebarEmoji(item.superview);

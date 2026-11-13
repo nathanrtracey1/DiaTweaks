@@ -53,7 +53,6 @@ NSView *DPChatCardHost(NSView *container) {
     }
     return nil;
 }
-}
 
 NSView *DPChatCard(NSView *container) {
     NSView *content = DPRoundedContent(container);

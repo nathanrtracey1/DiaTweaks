@@ -41,6 +41,12 @@ build/DiaPatchesSwift.o: $(DYLIB_SWIFT) | build
 $(HEADERS_BIN): $(DYLIB_HEADERS) scripts/pack-headers | build
 	scripts/pack-headers src/dylib $@
 
+build/obj/%.o: src/dylib/%.m
+	@mkdir -p $(dir $@)
+	clang $(CFLAGS) -MMD -MP -Isrc/dylib -c -o $@ $<
+
+-include $(DYLIB_OBJS:.o=.d)
+
 build/DiaPatches.dylib: $(DYLIB_OBJS) build/DiaPatchesSwift.o $(HEADERS_BIN) $(wildcard $(PASSKEYS)/*) $(PROVIDER_LOGOS) | build
 	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -Wl,-sectcreate,__TEXT,__dp_headers,$(HEADERS_BIN) $(PROVIDER_IMAGES) -framework AppKit -framework QuartzCore -framework Metal -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo -framework UniformTypeIdentifiers \
 		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(filter %.o,$^)
