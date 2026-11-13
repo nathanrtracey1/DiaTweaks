@@ -1,4 +1,5 @@
 #import "NativeControls.h"
+#import "Patches/Boosts/Boosts.h"
 
 static char DPSidebarMenuStyleKey;
 static __weak DPSidebarAddressRow *DPTrackingSiteMenu;
@@ -21,6 +22,7 @@ static NSArray<NSArray<NSString *> *> *DPPageMenuLabels(void) {
     return @[@[@"Bookmark this page",@"Edit bookmark",@"Remove bookmark",@"Add Bookmark…"],
              @[@"Split tabs",@"Exit split",@"Split Tab",@"Open Split Pane"],
              @[@"Chat with this tab"],
+             @[@"Boost This Site…",@"Boost This Site",@"Boosts"],
              @[@"Included in AI history search",@"Excluded from AI history search"]];
 }
 
@@ -32,7 +34,7 @@ static NSView *DPPageControl(DPSidebarAddressRow *row, NSArray<NSString *> *labe
 
 static NSMenuItem *DPPageMenuCommand(NSMenu *menu, NSArray<NSString *> *labels) {
     for (NSMenuItem *item in menu.itemArray) {
-        if ([labels containsObject:item.title] && item.action) return item;
+        if ([labels containsObject:item.title] && item.action && !item.isHidden) return item;
         NSMenuItem *nested = DPPageMenuCommand(item.submenu,labels);
         if (nested) return nested;
     }
@@ -56,11 +58,17 @@ static NSMenuItem *DPPageMenuCommand(NSMenu *menu, NSArray<NSString *> *labels) 
     DPSidebarAddressRow *previousRow = DPPageActionRow;
     NSView *previousSource = DPPageActionSource;
     DPPageActionRow = self;
-    DPPageActionSource = view;
+    DPPageActionSource = view ?: self;
     BOOL isChat = [labels containsObject:@"Chat with this tab"];
+    BOOL isBoost = [labels containsObject:@"Boost This Site…"] || [labels containsObject:@"Boost This Site"] || [labels containsObject:@"Boosts"];
     NSMenuItem *chatCommand = isChat ? DPPageMenuCommand(NSApp.mainMenu,@[@"Chat…"]) : nil;
     BOOL wasHidden = view.hidden;
     @try {
+        if (isBoost) {
+            if (command.enabled && [NSApp sendAction:command.action to:command.target from:command]) return;
+            NSString *domain = DPFrontDomain();
+            if (domain) { DPShowBoostEditor(domain); return; }
+        }
         // Use the native File command when the toolbar’s Chat control is hidden.
         if (isChat && (!view || view.hiddenOrHasHiddenAncestor || DPAddressControlsFor(self,NO).toolbar.alphaValue == 0)
             && chatCommand.enabled && [NSApp sendAction:chatCommand.action to:chatCommand.target from:chatCommand]) return;
@@ -101,6 +109,7 @@ static void DPAddressStyleMenuItem(NSMenuItem *item) {
     else if ([title containsString:@"bookmark"]) symbol = @"bookmark";
     else if ([title containsString:@"split"]) symbol = @"rectangle.split.2x1";
     else if ([title hasPrefix:@"chat with this tab"]) symbol = @"bubble.left";
+    else if ([title containsString:@"boost"]) symbol = @"paintbrush.pointed";
     else if ([title containsString:@"ai history search"]) symbol = @"clock.arrow.circlepath";
     else if ([title hasPrefix:@"site settings"]) symbol = @"gearshape";
     if (!symbol) return;
