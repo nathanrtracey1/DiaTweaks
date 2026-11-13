@@ -42,6 +42,7 @@
 #define DPDiaWebContents        "ArcWebContents"  // A tab's page, declared in ArcCore's ArcWebContents.h.
 #define DPDiaNavigationController "ArcWebContentsNavigationController"
 #define DPDiaTabGroupProperties "ArcTabGroupProperties"
+#define DPDiaToasts             "_TtC11DiaToastsV210ToastPanel"
 #define DPDiaTabSwitcher        "_TtC10RecentTabs26RecentTabsWindowController"
 #define DPDiaTabSwitcherList    "_TtC10RecentTabs24RecentTabsViewController"
 #define DPDiaSettingsController "_TtC11Preferences38SidebarPreferencesWindowViewController"

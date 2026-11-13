@@ -137,7 +137,8 @@ static void DPReadPatches(void) {
     NSMutableArray<NSString *> *sections = [NSMutableArray new];
     for (NSUInteger i = 0; i < DPPatchCount; i++) {
         DPPatch *patch = sorted[i];
-        NSString *section = patch->section ?: DPRequired(patch)->section ?: @"Other";
+        DPPatch *required = DPRequired(patch);
+        NSString *section = patch->section ?: (required ? required->section : nil) ?: @"Other";
         if (![sections containsObject:section]) [sections addObject:section];
         patch->order = (int)([sections indexOfObject:section] << 24 | [patch->title hasPrefix:@"Hide "] << 16 | patch->title.length << 8 | i);
     }
