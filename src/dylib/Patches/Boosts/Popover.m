@@ -53,7 +53,8 @@ static NSWindow *DPActiveBrowserWindow(void) {
     return nil;
 }
 
-// Under the Boost button, else under the address field, else under the top of the window while the toolbar is hidden.
+// Under the Boost button, else under the address field, else under the sidebar address row,
+// else under the top of the window while the toolbar is hidden.
 // A popover closes when the view it points at hides, and Dia hides the button and the field as the pointer leaves
 // them, so it points at the window's content view where the button is.
 static void DPShowPopover(NSPopover *popover, NSWindow *window) {
@@ -61,9 +62,23 @@ static void DPShowPopover(NSPopover *popover, NSWindow *window) {
     NSView *target = DPBoostButtonIn(window) ?: DPFindView(content, ^BOOL(NSView *view) {
         return DPIsKind(view, DPDiaAddressField) && !view.isHiddenOrHasHiddenAncestor;
     });
+    BOOL isSidebar = NO;
+    if (!target) {
+        NSView *sidebarRow = DPFindView(content, ^BOOL(NSView *view) {
+            return DPIsKind(view, "DPSidebarAddressRow") && !view.isHiddenOrHasHiddenAncestor;
+        });
+        if (sidebarRow) {
+            NSView *more = DPFindView(sidebarRow, ^BOOL(NSView *view) {
+                return DPHasLabel(view, @"Site menu");
+            });
+            target = more ?: sidebarRow;
+            isSidebar = YES;
+        }
+    }
     NSRect rect = target ? [content convertRect:target.bounds fromView:target]
                          : NSMakeRect(NSMidX(content.bounds), content.isFlipped ? 0 : NSMaxY(content.bounds) - 1, 1, 1);
-    [popover showRelativeToRect:rect ofView:content preferredEdge:content.isFlipped ? NSRectEdgeMaxY : NSRectEdgeMinY];
+    NSRectEdge preferredEdge = isSidebar ? NSRectEdgeMaxX : (content.isFlipped ? NSRectEdgeMaxY : NSRectEdgeMinY);
+    [popover showRelativeToRect:rect ofView:content preferredEdge:preferredEdge];
 }
 
 void DPShowBoostEditor(NSString *domain) {
