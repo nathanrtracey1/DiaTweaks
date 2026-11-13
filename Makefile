@@ -3,8 +3,7 @@ DYLIB_SOURCES := $(shell find src/dylib -name '*.[hm]')
 DYLIB_SWIFT := $(shell find src/dylib -name '*.swift')
 SDK := $(shell xcrun --show-sdk-path)
 SWIFT_LIB := $(SDK)/usr/lib/swift
-# FoundationModels only exists on macOS 26+, so it's weak-linked and Swift's automatic link to it is turned off. An
-# older SDK has no FoundationModels at all; Tidy Tabs then builds without it and says so when used.
+# FoundationModels is macOS 26+ only: weak-link it, stop Swift auto-linking it, and skip it when the SDK lacks it.
 FOUNDATION_MODELS := $(if $(wildcard $(SDK)/System/Library/Frameworks/FoundationModels.framework),-weak_framework FoundationModels)
 SWIFTFLAGS := -target arm64-apple-macos14.0 -O -parse-as-library -wmo -module-name DiaPatchesSwift \
 	-Xfrontend -disable-autolink-framework -Xfrontend FoundationModels
@@ -36,7 +35,7 @@ build/DiaPatches.dylib: $(DYLIB_OBJS) build/DiaPatchesSwift.o $(wildcard $(PASSK
 	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -framework AppKit -framework QuartzCore -framework Metal -framework UniformTypeIdentifiers -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
 		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(DYLIB_OBJS) build/DiaPatchesSwift.o
 
-# The patch list for diatweaks. With DIAPATCH_MANIFEST set, the dylib writes it and exits as it loads, so diapatch never runs.
+# With DIAPATCH_MANIFEST set, the dylib writes the patch list and exits as it loads, so diapatch never runs.
 build/patches.json: build/DiaPatches.dylib build/diapatch
 	DIAPATCH_MANIFEST=$@ DYLD_INSERT_LIBRARIES=$< build/diapatch
 
@@ -70,7 +69,6 @@ check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-t
 test: build/DiaPatches.dylib
 	./test.sh
 
-# make patch NAME=HideFooButton starts a new patch in src/dylib/Patches/HideFooButton.
 patch:
 	@scripts/new-patch "$(NAME)"
 

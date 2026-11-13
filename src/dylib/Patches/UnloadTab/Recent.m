@@ -1,6 +1,6 @@
 #import "Patches/UnloadTab/Recent.h"
 
-static NSMapTable<NSWindow *, NSMutableArray<NSString *> *> *DPRecent;  // Each window's tab IDs, the one in front last.
+static NSMapTable<NSWindow *, NSMutableArray<NSString *> *> *DPRecent;
 
 static void DPNoteFront(NSWindow *window) {
     NSString *active = window && DPUnloadTab.on ? DPActiveTabID(window) : nil;
@@ -12,7 +12,6 @@ static void DPNoteFront(NSWindow *window) {
     if (recent.count > 20) [recent removeObjectAtIndex:0];
 }
 
-// The tab you were on before the one in front, or else one next to it.
 id DPTabBefore(NSWindow *window) {
     NSString *active = DPActiveTabID(window);
     NSArray *tabs = [DPScriptWindow(window) valueForKey:@"appleScriptTabs"];

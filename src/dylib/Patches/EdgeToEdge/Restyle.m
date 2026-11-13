@@ -23,7 +23,6 @@ void DPRestyleContainer(NSView *container) {
     }
 }
 
-// Layout, layer updates and shadow layout often coincide, so they share one deferred restyle.
 static void DPQueueRestyle(NSView *container, BOOL checkChat) {
     if (checkChat) DPSet(container, &DPCheckChatKey, @YES);
     if ([DPGet(container, &DPPendingRestyleKey) boolValue]) return;
@@ -52,7 +51,6 @@ static void DPContainer_layoutOrUpdateLayer(NSView *self, SEL _cmd) {
     DPQueueRestyle(self, NO);
 }
 
-// Opening or closing Chat reshapes the content without resizing the container.
 static void DPShadow_layout(NSView *self, SEL _cmd) {
     DPCallOriginal(DPShadow_layout, self);
     NSView *container = self;
@@ -64,7 +62,7 @@ void DPInstallRestyle(void) {
     DPHook(DPDiaContentContainer, @selector(layout), (IMP)DPContainer_layoutOrUpdateLayer);
     DPHook(DPDiaContentContainer, @selector(updateLayer), (IMP)DPContainer_layoutOrUpdateLayer);
     DPHook(DPDiaShadowView, @selector(layout), (IMP)DPShadow_layout);
-    // A screen-sized window doesn't lay out entering or leaving full screen. AppKit flips the style mask just after each will.
+    // AppKit flips the style mask just after each will, and a screen-sized window doesn't lay out.
     NSArray<NSNotificationName> *names = @[NSWindowWillEnterFullScreenNotification, NSWindowDidEnterFullScreenNotification,
                                            NSWindowWillExitFullScreenNotification, NSWindowDidExitFullScreenNotification];
     for (NSNotificationName name in names)

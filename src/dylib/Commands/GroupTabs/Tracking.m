@@ -46,7 +46,7 @@ static void DPBrowser_didCreate(id self, SEL _cmd, id browser, id contents, BOOL
     if (browser && contents) DPRemember(contents, nil, browser, DPDelegateFor(self, browser));
 }
 
-// Tabs opened from Dia's UI arrive only here; the delegate callbacks see restored and page-opened tabs.
+// Tabs opened from Dia's UI arrive only here; the delegate callbacks miss them.
 static id DPBrowser_createWebContents(id self, SEL _cmd, id params) {
     id contents = DPCallOriginal(DPBrowser_createWebContents, self, params);
     DPRemember(contents, nil, self, [DPDelegateByBrowser objectForKey:self]);
@@ -60,7 +60,6 @@ static void DPBrowser_takeOwnership(id self, SEL _cmd, id contents) {
 
 NSWindow *DPBrowserWindow(id browser) { return [DPWindowByBrowser objectForKey:browser]; }
 
-// A profile by its folder in Dia's user data, which both a browser's context and Dia's window name it by.
 static NSString *DPBrowserProfile(id browser) {
     id context = [browser respondsToSelector:@selector(context)] ? DPMsg(browser, @selector(context)) : nil;
     id contextID = [context respondsToSelector:@selector(id)] ? DPMsg(context, @selector(id)) : nil;
@@ -73,7 +72,6 @@ static NSString *DPFocusedProfile(NSWindow *window) {
     return DPText(DPSwiftValue(DPSwiftValue(focused, @"profileID"), @"directoryBasename"));
 }
 
-// A window keeps a browser for each profile it has shown. This is the one for the profile in front, else any of them.
 static id DPFrontBrowser(NSWindow *window, NSArray *browsers) {
     NSMutableArray *shown = [NSMutableArray new];
     for (id browser in browsers)

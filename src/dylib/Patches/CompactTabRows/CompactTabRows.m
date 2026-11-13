@@ -1,7 +1,4 @@
-#import "StdPatch/StdPatch.h"
-
-// Dia 1.57 made the sidebar's rows 41 pt tall, from 37. After Dia lays the list out, each row of the usual height gives
-// back the difference: the rows below move up, and a folder shrinks by its own header and the rows inside it.
+#import "Patches/CompactTabRows/CompactTabRows.h"
 
 extern DPPatch DPCompactTabRows;
 
@@ -13,11 +10,6 @@ static NSArray<NSCollectionViewLayoutAttributes *> *DPKeptAttributes(NSCollectio
     return elements(layout, @selector(layoutAttributesForElementsInRect:), NSMakeRect(-1e5, -1e5, 2e5, 1e7));
 }
 
-static void DPRelayoutTabList(void) {
-    for (NSView *view in DPFindViews(DPDiaTabListCollection)) [((NSCollectionView *)view).collectionViewLayout invalidateLayout];
-}
-
-// The most common item height is a row's. Nothing to do when rows are already the old height, or a kept layout still has ours.
 static CGFloat DPRowHeight(NSArray<NSCollectionViewLayoutAttributes *> *all) {
     NSCountedSet<NSNumber *> *heights = [NSCountedSet set];
     for (NSCollectionViewLayoutAttributes *a in all)
@@ -27,7 +19,7 @@ static CGFloat DPRowHeight(NSArray<NSCollectionViewLayoutAttributes *> *all) {
     return row.doubleValue;
 }
 
-static char DPMovesKey;  // On the layout: each item's frame, shortened, then as Dia laid it out.
+static char DPMovesKey;
 
 static void DPLayout_prepareLayout(NSCollectionViewLayout *self, SEL _cmd) {
     DPCallOriginal(DPLayout_prepareLayout, self);
@@ -36,7 +28,6 @@ static void DPLayout_prepareLayout(NSCollectionViewLayout *self, SEL _cmd) {
     NSArray<NSCollectionViewLayoutAttributes *> *all = DPKeptAttributes(self);
     CGFloat height = DPRowHeight(all), cut = height - DPOldRowHeight;
     if (!contentHeight || cut < 0.5) return;
-    // A row is an item of the row height, or the header at the top of anything taller, such as an open folder.
     NSMutableArray<NSValue *> *rows = [NSMutableArray new];
     for (NSCollectionViewLayoutAttributes *a in all)
         if (a.representedElementCategory == NSCollectionElementCategoryItem && NSHeight(a.frame) >= height - 0.5)
@@ -58,12 +49,8 @@ static void DPLayout_prepareLayout(NSCollectionViewLayout *self, SEL _cmd) {
     DPSet(self, &DPMovesKey, moves);
 }
 
-#pragma mark Dragging
-
-// Dia works out where a dragged tab lands from the rows as it laid them out, so the pointer goes back to the same spot
-// in those: through the innermost item under it, or past the nearest one above it. Collapse Pinned Tabs, whose hooks
-// install after these and so run first, has already taken its header out of the point.
-static CGFloat DPDiaY(NSArray<NSArray<NSValue *> *> *moves, CGFloat y) {
+// Collapse Pinned's hooks install after these, so run first and have already taken its header out of the point.
+CGFloat DPTabListDiaY(NSArray<NSArray<NSValue *> *> *moves, CGFloat y) {
     NSArray<NSValue *> *inside = nil, *above = nil;
     for (NSArray<NSValue *> *move in moves) {
         NSRect now = move[0].rectValue;
@@ -91,16 +78,20 @@ static CGFloat DPDiaY(NSArray<NSArray<NSValue *> *> *moves, CGFloat y) {
 - (BOOL)isKindOfClass:(Class)cls { return [(NSObject *)self.info isKindOfClass:cls]; }
 @end
 
+id<NSDraggingInfo> DPDraggingInfoAt(id<NSDraggingInfo> info, NSPoint location) {
+    DPCompactDrag *drag = [DPCompactDrag alloc];
+    drag.info = info;
+    drag.location = location;
+    return (id<NSDraggingInfo>)drag;
+}
+
 static id<NSDraggingInfo> DPDiaDrag(NSView *tabList, id<NSDraggingInfo> info) {
     NSCollectionView *list = (NSCollectionView *)DPFindView(tabList, ^BOOL(NSView *view) { return DPIsKind(view, DPDiaTabListCollection); });
     NSArray *moves = DPGet(list.collectionViewLayout, &DPMovesKey);
     if (!moves) return info;
     NSPoint point = [list convertPoint:info.draggingLocation fromView:nil];
-    point.y = DPDiaY(moves, point.y);
-    DPCompactDrag *drag = [DPCompactDrag alloc];
-    drag.info = info;
-    drag.location = [list convertPoint:point toView:nil];
-    return (id<NSDraggingInfo>)drag;
+    point.y = DPTabListDiaY(moves, point.y);
+    return DPDraggingInfoAt(info, [list convertPoint:point toView:nil]);
 }
 
 static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_entered, self, DPDiaDrag(self, info)); }
@@ -108,8 +99,6 @@ static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingIn
 static BOOL DPTabList_prepare(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_prepare, self, DPDiaDrag(self, info)); }
 static BOOL DPTabList_perform(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_perform, self, DPDiaDrag(self, info)); }
 
-// An open folder lays its header out at the new height, so its title would sit low over the shorter header. It moves up
-// to the middle of the old one.
 static void DPGroupCell_layout(NSView *self, SEL _cmd) {
     DPCallOriginal(DPGroupCell_layout, self);
     if (!DPCompactTabRows.on || NSHeight(self.bounds) <= DPOldRowHeight + 0.5) return;
@@ -129,7 +118,9 @@ static void DPInstallCompactTabRows(void) {
     DPHook(DPDiaTabList, @selector(performDragOperation:), (IMP)DPTabList_perform);
 }
 
-static void DPApplyCompactTabRows(DPPatch *patch) { DPRelayoutTabList(); }
+static void DPApplyCompactTabRows(DPPatch *patch) {
+    for (NSView *view in DPFindViews(DPDiaTabListCollection)) [((NSCollectionView *)view).collectionViewLayout invalidateLayout];
+}
 
 static NSString *DPVerifyCompactTabRows(DPPatch *patch) {
     for (NSView *view in DPFindViews(DPDiaTabListCollection)) {

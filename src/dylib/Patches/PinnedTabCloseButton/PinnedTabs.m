@@ -19,7 +19,7 @@ void DPRelayoutTabContents(void) {
     for (NSView *content in DPFindViews(DPDiaTabContentView)) content.needsLayout = YES;
 }
 
-// The page's attributes, while the tab shows a web page: the controller holds an enum whose other cases set top bits.
+// The controller holds an enum whose other cases set top bits; only a web page's attributes pass.
 id DPAttributes(NSView *content) {
     void **slot = DPIvar(DPViewModelDelegate(content), "attributesController");
     uintptr_t raw = slot ? (uintptr_t)*slot : 0;
@@ -28,7 +28,6 @@ id DPAttributes(NSView *content) {
     return DPIsKind(attributes, DPDiaTabPageAttributes) ? attributes : nil;
 }
 
-// Dia keeps activeURL while a pinned tab has its page, and clears it when the tab closes.
 BOOL DPIsOpenPinned(NSView *content) {
     id attributes = DPAttributes(content);
     BOOL *pinned = DPIvar(attributes, "isInFavoritesOrPinnedContainer");
@@ -44,7 +43,7 @@ BOOL DPClickKeepingTab(NSView *content, void (^click)(void)) {
     uint8_t *style = DPIvar(DPViewModelDelegate(DPEnclosingTab(content)), "requestedCloseButtonStyle");
     if (!style) return NO;
     uint8_t dia = *style;
-    *style = DPCloseKeepingTabStyle;  // Dia reads it before the click returns.
+    *style = DPCloseKeepingTabStyle;
     DPKeeping = YES;
     click();
     DPKeeping = NO;

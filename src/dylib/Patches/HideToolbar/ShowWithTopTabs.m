@@ -1,7 +1,5 @@
 #import "HideToolbar.h"
 
-static void DPApplyShowWithTopTabs(DPPatch *patch) { DPRelayoutPanes(); }
-
 DP_PATCH(DPShowToolbarWithTopTabs) {
     .key = @"showToolbarWithTopTabs",
     .order = 48,
@@ -11,6 +9,6 @@ DP_PATCH(DPShowToolbarWithTopTabs) {
     .tint = @"systemIndigoColor",
     .requires = @"hideToolbar",
     .section = @"Showing the Toolbar",
-    .apply = DPApplyShowWithTopTabs,
+    .apply = DPApplyRelayoutPanes,
     .verify = DPVerifyKeptInPlace,
 };

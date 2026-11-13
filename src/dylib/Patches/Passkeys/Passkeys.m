@@ -3,17 +3,15 @@
 #import <mach-o/getsect.h>
 #import <mach-o/ldsyms.h>
 
-// Patching costs Dia the entitlement Apple Passwords requires of browsers, so diapatch runs requests in the unpatched Dia.
-
 extern DPPatch DPPasskeys;
 
-static NSString *const kExtensionID = @"ljonmeeapeagnkmjklinbocjbjepecce";  // from the key in extension/manifest.json
+static NSString *const kExtensionID = @"ljonmeeapeagnkmjklinbocjbjepecce";  // Derived from the key in extension/manifest.json.
 
 static NSString *const kFiles[] = { @"manifest.json", @"page.js", @"bridge.js", @"worker.js" };
 
 static NSString *DPExtensionFolder(void) { return DPAppSupport(@"DiaPatches/passkeys-extension"); }
 
-// Dia's Chromium looks for native messaging hosts in Chrome's folder.
+// Dia's Chromium reads native messaging hosts from Chrome's folder.
 static NSString *DPHostManifestPath(void) { return DPAppSupport(@"Google/Chrome/NativeMessagingHosts/com.diapatches.passkeys.json"); }
 
 static NSError *gWriteError;
@@ -83,7 +81,7 @@ static void DPInstallPasskeys(void) {
 
 static void DPApplyPasskeys(DPPatch *patch) {
     if (patch->on) DPSetUpPasskeys();
-    if (patch->on == gExtensionLoaded || patch->on != DPSavedOn(patch) || (patch->on && DPPasskeysProblem(patch))) return;  // the self-test flips patches without saving
+    if (patch->on == gExtensionLoaded || patch->on != DPSavedOn(patch) || (patch->on && DPPasskeysProblem(patch))) return;  // The self-test flips patches without saving.
     NSAlert *alert = [NSAlert new];
     alert.messageText = patch->on ? @"Relaunch Dia to allow iCloud passkeys" : @"Relaunch Dia to stop using iCloud passkeys";
     [alert addButtonWithTitle:@"Relaunch"];

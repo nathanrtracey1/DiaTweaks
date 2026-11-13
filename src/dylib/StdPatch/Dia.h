@@ -42,7 +42,6 @@
 #define DPDiaWebContents        "ArcWebContents"  // A tab's page, declared in ArcCore's ArcWebContents.h.
 #define DPDiaNavigationController "ArcWebContentsNavigationController"
 #define DPDiaTabGroupProperties "ArcTabGroupProperties"
-#define DPDiaToasts             "_TtC11DiaToastsV210ToastPanel"  // Dia 1.56 shows "Copied Current URL" with these.
 #define DPDiaTabSwitcher        "_TtC10RecentTabs26RecentTabsWindowController"
 #define DPDiaTabSwitcherList    "_TtC10RecentTabs24RecentTabsViewController"
 #define DPDiaSettingsController "_TtC11Preferences38SidebarPreferencesWindowViewController"

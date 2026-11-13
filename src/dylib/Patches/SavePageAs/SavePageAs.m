@@ -16,13 +16,19 @@ static void DPPage_setVisibility(id self, SEL _cmd, NSInteger visibility) {
 }
 
 static id DPFrontPage(void) {
-    id found = nil;
+    NSWindow *window = NSApp.keyWindow;
+    NSView *hit = [window.contentView.superview hitTest:window.mouseLocationOutsideOfEventStream];
+    id focused = nil, under = nil, only = nil;
+    NSUInteger count = 0;
     for (id page in DPPages.allObjects) {
         NSView *view = [page performSelector:@selector(nativeView)];
-        if (view.window != NSApp.keyWindow || ((NSInteger (*)(id, SEL))objc_msgSend)(page, @selector(visibility)) != DPWebContentsVisible) continue;
-        if (!found || ((BOOL (*)(id, SEL))objc_msgSend)(page, @selector(hasFocus))) found = page;
+        if (view.window != window || ((NSInteger (*)(id, SEL))objc_msgSend)(page, @selector(visibility)) != DPWebContentsVisible) continue;
+        if (((BOOL (*)(id, SEL))objc_msgSend)(page, @selector(hasFocus))) focused = page;
+        if ([hit isDescendantOf:view]) under = page;
+        only = page;
+        count++;
     }
-    return found;
+    return focused ?: under ?: (count == 1 ? only : nil);
 }
 
 static void DPSaveFrontPage(void) { [DPFrontPage() performSelector:@selector(save)]; }

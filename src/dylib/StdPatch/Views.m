@@ -61,7 +61,7 @@ BOOL DPMayAdjust(NSView *view) {
     [counts setObject:@(n) forKey:view];
     if (n == DPAdjustLimit + 1) {
         os_log(OS_LOG_DEFAULT, "DiaPatches: letting Dia lay out %{public}s for the rest of this turn, which kept undoing a patch", object_getClassName(view));
-        // Several tweaks switched together also hit the limit, and a busy run loop never waits to reset it, so retry soon.
+        // A busy run loop never waits to reset the counts, so retry soon.
         __weak NSView *weak = view;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             if (weak) [counts removeObjectForKey:weak];

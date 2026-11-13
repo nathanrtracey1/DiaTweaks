@@ -1,5 +1,6 @@
 #import "StdPatch/StdPatch.h"
 #import "StdPatch/Hide.h"
+#import "SafeMode/SafeMode.h"
 #include <mach-o/getsect.h>
 #include <notify.h>
 
@@ -52,7 +53,6 @@ static void DPEnsureReady(DPPatch *patch) {
         if (patch->apply) patch->apply(patch);
         problem = patch->ready(patch);
     }
-    // The test reports the problem itself; an alert would stop it until someone answers.
     if (!problem || DPTesting) return;
     NSLog(@"DiaPatches: %@ couldn't turn on: %@", patch->title, problem);
     patch->on = NO;
@@ -71,6 +71,7 @@ void DPSetPatch(DPPatch *patch, BOOL on, BOOL save) {
     if (patch->on == on) return;
     patch->on = on;
     if (save) [DPDefaults setBool:on forKey:patch->key];
+    if (DPSafeMode) return;
     if (patch->apply) patch->apply(patch);
     else DPAnimate();
     if (on && patch->ready) DPEnsureReady(patch);
@@ -87,7 +88,6 @@ NSString *DPRelayProblem(void) {
     return nil;
 }
 
-// A folder Dia may not write to was usually made by something running as root, and taking it back fixes it.
 NSString *DPWriteProblem(NSString *path, NSError *error) {
     path = error.userInfo[NSFilePathErrorKey] ?: path;
     NSString *problem = [NSString stringWithFormat:@"Couldn’t write %@: %@", path, error.localizedDescription];
@@ -119,7 +119,7 @@ NSString *DPChoice(DPPatch *patch) {
 
 void DPSetChoice(DPPatch *patch, NSString *value) {
     [DPDefaults setObject:value forKey:patch->choice];
-    if (patch->on && patch->apply) patch->apply(patch);
+    if (!DPSafeMode && patch->on && patch->apply) patch->apply(patch);
 }
 
 static int DPCompareOrder(const void *a, const void *b) {
@@ -148,11 +148,8 @@ void DPLoadPatches(void) {
     DPDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.diapatches"];
     DPReadPatches();
 
-    for (NSUInteger i = 0; i < DPPatchCount; i++) {
+    for (NSUInteger i = 0; i < DPPatchCount; i++)
         for (const char *const *name = DPPatches[i]->classes; name && *name; name++) DPPatches[i]->unavailable |= !objc_getClass(*name);
-        for (const char *const *name = DPPatches[i]->builtIn; name && *name; name++) DPPatches[i]->inDia |= objc_getClass(*name) != nil;
-        DPPatches[i]->unavailable |= DPPatches[i]->inDia;
-    }
     for (NSUInteger i = 0; i < DPPatchCount; i++) {
         DPPatch *patch = DPPatches[i];
         for (DPPatch *required = DPRequired(patch); required; required = DPRequired(required)) patch->unavailable |= required->unavailable;
@@ -170,6 +167,7 @@ static void DPApplySavedSettings(void) {
     [NSNotificationCenter.defaultCenter postNotificationName:DPPatchesDidChangeNotification object:nil];
 }
 
+// Hooks install in Settings order (section, non-"Hide" first, then title length): a later hook runs first, and the sidebar drag tweaks rely on it.
 void DPInstallPatches(void) {
     for (NSUInteger i = 0; i < DPPatchCount; i++) if (!DPPatches[i]->unavailable && DPPatches[i]->install) DPPatches[i]->install();
     DPOnLaunch(^{

@@ -26,8 +26,6 @@ body:
         - Show Toolbar on New Tabs
         - Show Toolbar with Sidebar
         - Show Loading Progress
-        - Show Toast When Copying URL
-        - Show Toolbar When Copying URL
         - Hide Site Color in Tab Bar
         - Always Show Address Field
         - Hide Sidebar Button
