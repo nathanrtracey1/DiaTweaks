@@ -1,7 +1,7 @@
 #import "StdPatch/StdPatch.h"
 #import "Updates/Updates.h"
-#import "Patches/AgentTransport/AgentRelay.h"
 #import "Patches/AgentTransport/AgentSocket.h"
+#import "Providers.h"
 
 NSData *DPChatAgentRequest(NSData *line, NSString *model);
 NSArray<NSString *> *DPInstalledChatModels(void);
@@ -48,7 +48,7 @@ void DPApplyDiaChatModel(DPPatch *patch) {
     if (active) filter = ^NSData *(NSData *line, DPAgentReply reply) {
         return DPTurnOffAI.on ? line : DPChatAgentRequest(line, model);
     };
-    DPSetAgentFilters(patch->key, filter, nil);
+    DPSetChatProvider(active ? DPSelectedChatProvider() : nil, filter);
     DPRefreshDiaModelPicker();
     [NSNotificationCenter.defaultCenter postNotificationName:DPPatchesDidChangeNotification object:nil];
     DPOfferChatModelRelaunch(patch);
@@ -56,11 +56,17 @@ void DPApplyDiaChatModel(DPPatch *patch) {
 
 static void DPInstallDiaChatModel(void) {
     DPInstallDiaModelOverview();
+    [NSNotificationCenter.defaultCenter addObserverForName:@"DPChatProvidersChanged" object:nil queue:NSOperationQueue.mainQueue
+        usingBlock:^(NSNotification *note) { DPProviderChanged(); }];
     DPApplyDiaChatModel(&DPDiaChatModel);
-    DPOnLaunch(^{ DPApplyDiaChatModel(&DPDiaChatModel); });
     [NSNotificationCenter.defaultCenter addObserverForName:DPPatchesDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
         if (DPDiaChatModel.on && DPTurnOffAI.on != gAppliedTurnOffAI) DPApplyDiaChatModel(&DPDiaChatModel);
     }];
+    DPOnLaunch(^{
+        DPApplyDiaChatModel(&DPDiaChatModel);
+        if (!DPTesting) for (NSDictionary *account in DPChatProviders.accounts)
+            [DPChatProviders refresh:account[@"id"] force:NO completion:^(NSString *error) {}];
+    });
 }
 
 NSMenu *DPDiaChatModels(void) {
@@ -70,8 +76,22 @@ NSMenu *DPDiaChatModels(void) {
     for (NSString *model in models)
         [menu addItemWithTitle:model action:nil keyEquivalent:@""].representedObject = model;
     NSString *saved = DPChoice(&DPDiaChatModel);
-    if (!DPDiaChatModelFallback.on && saved.length && ![saved isEqual:DPDefaultDiaModel] && ![models containsObject:saved])
+    if (!DPDiaChatModelFallback.on && saved.length && ![saved hasPrefix:@"provider:"] && ![saved isEqual:DPDefaultDiaModel] && ![models containsObject:saved])
         [menu addItemWithTitle:saved action:nil keyEquivalent:@""].representedObject = saved;
+    for (NSDictionary *account in DPChatProviders.accounts) {
+        [menu addItem:NSMenuItem.separatorItem];
+        NSMenuItem *heading = [menu addItemWithTitle:account[@"name"] action:nil keyEquivalent:@""];
+        heading.enabled = NO;
+        for (NSDictionary *item in account[@"catalog"]) {
+            if (![account[@"visibility"][item[@"id"]] boolValue]) continue;
+            NSString *choice = [NSString stringWithFormat:@"provider:%@/%@", account[@"id"], item[@"id"]];
+            [menu addItemWithTitle:item[@"name"] action:nil keyEquivalent:@""].representedObject = choice;
+        }
+    }
+    NSString *active = DPActiveChatChoice();
+    if ([active hasPrefix:@"provider:"] && ![menu.itemArray filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSMenuItem *item, NSDictionary *bindings) {
+        return [item.representedObject isEqual:active];
+    }]].count) [menu addItemWithTitle:DPChatChoiceTitle(active) action:nil keyEquivalent:@""].representedObject = active;
     return menu;
 }
 
@@ -86,8 +106,8 @@ DP_PATCH(DPDiaChatModel) {
     .key = @"diaChatModel",
     .order = 260,
     .title = @"Chat Model",
-    .detail = @"Choose which model Dia’s chat uses, from the models Dia already lists. If Dia’s chat helper was already running when you turn this on, DiaTweaks offers to relaunch Dia.",
-    .hint = @"Your account decides which models work, and Dia’s own upgrade prompts still apply.",
+    .detail = @"Choose a Dia model or add your own provider. If Dia’s chat helper was already running when you turn this on, DiaTweaks offers to relaunch Dia.",
+    .hint = @"Model availability depends on your account. Dia’s own upgrade prompts still apply.",
     .symbol = @"sparkles",
     .tint = @"systemPurpleColor",
     .section = @"AI",
@@ -96,6 +116,7 @@ DP_PATCH(DPDiaChatModel) {
     .choice = @"diaChatModelChoice",
     .defaultChoice = @"dia-default",
     .choices = DPDiaChatModels,
+    .rows = DPProviderRows,
     .install = DPInstallDiaChatModel,
     .apply = DPApplyDiaChatModel,
     .verify = DPVerifyDiaChatModel,

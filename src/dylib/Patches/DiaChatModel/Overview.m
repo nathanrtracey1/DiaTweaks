@@ -1,4 +1,4 @@
-#import "StdPatch/StdPatch.h"
+#import "Providers.h"
 
 extern DPPatch DPDiaChatModel, DPDiaChatModelFallback;
 NSArray<NSString *> *DPInstalledChatModels(void);
@@ -18,7 +18,7 @@ static NSTextField *DPModelNote(NSView *overview) {
 }
 
 static NSString *DPModelSummary(void) {
-    return DPSelectedDiaChatModel(DPChoice(&DPDiaChatModel), DPInstalledChatModels(), DPDiaChatModelFallback.on) ?: @"Dia Default";
+    return DPChatChoiceTitle(DPActiveChatChoice());
 }
 
 static void DPUpdateModelNote(NSView *overview) {

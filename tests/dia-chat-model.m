@@ -4,6 +4,7 @@
 #import "Patches/AgentTransport/AgentRelay.h"
 #import "Patches/AgentTransport/AgentSocket.h"
 #import "Patches/AgentTransport/AgentWriter.h"
+#import "Patches/DiaChatModel/Providers.h"
 #include <mach-o/dyld.h>
 #include <mach-o/fat.h>
 #include <mach-o/loader.h>
@@ -40,6 +41,23 @@ BOOL DPTesting = YES;
 static BOOL gSaved = YES;
 BOOL DPSavedOn(DPPatch *patch) { return gSaved; }
 void DPHandOffAndQuit(NSArray<NSString *> *args) { fputs("FAIL: the test must never relaunch\n", stderr); exit(1); }
+
+// Provider behavior is tested separately with the real router and a fixture provider.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincomplete-implementation"
+@implementation DPChatProviders
++ (NSArray *)accounts { return @[]; }
++ (void)refresh:(NSString *)identifier force:(BOOL)force completion:(void (^)(NSString *))completion {}
+@end
+#pragma clang diagnostic pop
+NSDictionary *DPSelectedChatProvider(void) { return nil; }
+NSArray<NSView *> *DPProviderRows(void) { return @[]; }
+NSString *DPActiveChatChoice(void) { return gChoice ?: @"dia-default"; }
+NSString *DPChatChoiceTitle(NSString *choice) { return choice; }
+void DPProviderChanged(void) {}
+void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
+    DPSetAgentFilters(@"diaChatModel", nativeFilter, nil);
+}
 
 #define CHECK(condition, ...) do { if (!(condition)) { fprintf(stderr, "FAIL line %d: %s\n  ", __LINE__, #condition); fprintf(stderr, "" __VA_ARGS__); fputc('\n', stderr); exit(1); } } while (0)
 

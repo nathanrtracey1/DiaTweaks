@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+temporary=$(mktemp -d "${TMPDIR:-/tmp}/chat-providers-test.XXXXXX")
+trap 'rm -rf "$temporary"' EXIT
+patch=src/dylib/Patches/DiaChatModel
+cat > "$temporary/main.swift" <<'SWIFT'
+import Foundation
+@main struct Tests {
+    static func main() async throws {
+        try testProviderStore()
+        try await testProviderHTTP(CommandLine.arguments[1])
+    }
+}
+SWIFT
+swiftc -parse-as-library "$patch"/OpenAI*.swift "$patch"/AnthropicStream.swift "$patch"/Provider{Store,Validation,Accounts,Catalog,HTTP,Reasoning,Wire}.swift \
+    tests/provider-secrets.swift tests/provider-store.swift tests/provider-http.swift "$temporary/main.swift" -o "$temporary/check"
+clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-routing.m "$patch/ProviderRouting.m" "$patch/ProviderRun.m" "$patch/AgentRequest.m" -o "$temporary/routing"
+"$temporary/routing"
+clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-files.m "$patch/ChatPaths.m" "$patch/ChatReports.m" -o "$temporary/files"
+"$temporary/files"
+python3 - "$temporary/check" "$temporary" <<'PY'
+import os, subprocess, sys
+server = subprocess.Popen([sys.executable, 'tests/provider-server.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+try:
+    port = server.stdout.readline().strip()
+    env = dict(os.environ, DIAPATCH_HOME=sys.argv[2])
+    subprocess.run([sys.argv[1], 'http://127.0.0.1:' + port], env=env, check=True)
+finally:
+    server.stdin.close(); server.wait(timeout=5)
+PY

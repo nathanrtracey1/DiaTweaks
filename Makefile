@@ -151,7 +151,7 @@ build/hide-chat-button: tests/hide-chat-button.m src/dylib/Patches/HideChatButto
 CHAT_MODEL := src/dylib/Patches/DiaChatModel
 AGENT_TRANSPORT := $(addprefix src/dylib/Patches/AgentTransport/,AgentRelay.m AgentSocket.m AgentFilters.m AgentFrames.m AgentWriter.m)
 
-build/dia-chat-model: tests/dia-chat-model.m $(CHAT_MODEL)/DiaChatModel.m $(CHAT_MODEL)/Fallback.m $(CHAT_MODEL)/AgentRequest.m $(AGENT_TRANSPORT) src/dylib/StdPatch/Hook.m $(wildcard src/dylib/StdPatch/*.h src/dylib/Patches/AgentTransport/*.h) | build
+build/dia-chat-model: tests/dia-chat-model.m $(CHAT_MODEL)/DiaChatModel.m $(CHAT_MODEL)/Fallback.m $(CHAT_MODEL)/AgentRequest.m $(CHAT_MODEL)/Providers.h $(AGENT_TRANSPORT) src/dylib/StdPatch/Hook.m $(wildcard src/dylib/StdPatch/*.h src/dylib/Patches/AgentTransport/*.h) | build
 	clang $(CFLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -Isrc/dylib -framework AppKit -framework QuartzCore -o $@ tests/dia-chat-model.m $(CHAT_MODEL)/DiaChatModel.m $(CHAT_MODEL)/Fallback.m $(CHAT_MODEL)/AgentRequest.m $(AGENT_TRANSPORT) src/dylib/StdPatch/Hook.m
 
 check-dia-chat-model: build/dia-chat-model
@@ -461,6 +461,7 @@ check: build/diapatch build/diapatch-tests build/group-tabs build/mouse-back-for
 	build/combinatorial-stability
 	build/local-tweaks --type=local-tweaks
 	tests/sidebar-grain
+	tests/providers
 	scripts/check-patches
 
 test: build/DiaPatches.dylib
