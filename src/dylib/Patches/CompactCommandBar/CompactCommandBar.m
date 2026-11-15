@@ -25,10 +25,10 @@ static BOOL DPCompacts(NSView *toolbar) {
     return DPCompactWithChat.on || DPChatLocked(toolbar);
 }
 
-// The chat composer uses the same views and must not compact.
+// The chat composer uses the same views and must not compact, in the sidebar or Dia's floating window.
 static BOOL DPOnCommandBarSurface(NSView *view) {
     for (; view; view = view.superview)
-        if (DPIsKind(view, DPDiaPopover) || DPIsKind(view, DPDiaNewTabPage) || DPIsKind(view, "DPCommandBarOverlay")) return YES;
+        if ((DPIsKind(view, DPDiaPopover) && !DPIsFloatingChat(view)) || DPIsKind(view, DPDiaNewTabPage) || DPIsKind(view, "DPCommandBarOverlay")) return YES;
     return NO;
 }
 

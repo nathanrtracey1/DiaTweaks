@@ -1,4 +1,5 @@
 #import "AppIcon.h"
+#import "BriefLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <Foundation/Foundation.h>
 #import "LaunchServices.h"
@@ -336,7 +337,7 @@ static BOOL build(NSString *source) {
     BOOL ok = removeTree(work) && makeDir(gStaged.stringByDeletingLastPathComponent) && clone(source, work)
         && addLoadCommand([contents stringByAppendingPathComponent:[@"MacOS" stringByAppendingPathComponent:executable]], dylib)
         && configureInfo(work) && removeTree([contents stringByAppendingPathComponent:@"embedded.provisionprofile"])
-        && noteIcon(DPPrepareIcons(work, gApp, gHome)) && sign(work) && moveBundle(work, gStaged) && (DPForgetApp(gStaged), YES)
+        && noteIcon(DPPrepareIcons(work, gApp, gHome)) && noteIcon(DPPrepareBriefLanguage(work)) && sign(work) && moveBundle(work, gStaged) && (DPForgetApp(gStaged), YES)
         && ([stagedID() writeToFile:gReady atomically:YES encoding:NSUTF8StringEncoding error:NULL] || fail(@"cannot write %@", gReady));
     if (!ok) removeTree(work);
     return ok;

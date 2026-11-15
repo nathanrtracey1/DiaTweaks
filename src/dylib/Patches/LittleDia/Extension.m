@@ -34,12 +34,14 @@ static NSString *const kWorker = @"const popupTab = async ({ tabId, url }) => {\
     @"  if (request.action !== 'promote' || !tab.url) return;\n"
     @"  const normal = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);\n"
     @"  if (normal) {\n"
-    @"    await chrome.tabs.create({ windowId: normal.id, url: tab.url, active: true });\n"
+    @"    const moved = await chrome.tabs.move(tab.id, { windowId: normal.id, index: -1 }).catch(() => null);\n"
+    @"    if (moved) await chrome.tabs.update(tab.id, { active: true });\n"
+    @"    else await chrome.tabs.create({ windowId: normal.id, url: tab.url, active: true });\n"
     @"    await chrome.windows.update(normal.id, { focused: true });\n"
     @"  } else {\n"
     @"    await chrome.windows.create({ url: tab.url, focused: true });\n"
     @"  }\n"
-    @"  await chrome.windows.remove(tab.windowId);\n"
+    @"  await chrome.windows.remove(tab.windowId).catch(() => {});\n"
     @"});\n";
 
 // Chromium keeps an extension's worker from its first run, so a changed worker needs a new folder.

@@ -11,7 +11,9 @@ static NSDictionary *DPDefaultSaveShortcut(void) {
 }
 
 static void DPPage_setVisibility(id self, SEL _cmd, NSInteger visibility) {
-    [DPPages addObject:self];
+    if ([self respondsToSelector:@selector(nativeView)] && [self respondsToSelector:@selector(visibility)] && [self respondsToSelector:@selector(hasFocus)]
+        && [self respondsToSelector:@selector(save)])
+        [DPPages addObject:self];
     DPCallOriginal(DPPage_setVisibility, self, visibility);
 }
 

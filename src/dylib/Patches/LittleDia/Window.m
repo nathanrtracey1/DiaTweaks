@@ -21,7 +21,12 @@ void DPExpectLittleDiaWindow(NSRect frame, NSDictionary *noted, void (^missed)(v
 
 BOOL DPIsLittleDiaWindow(NSWindow *window) { return window && [DPGet(window, &DPLittleKey) boolValue]; }
 
-id DPLittleDiaPage(NSWindow *window) { return DPGet(window, &DPPageKey); }
+id DPLittleDiaPage(NSWindow *window) {
+    id page = DPGet(window, &DPPageKey);
+    BOOL usable = [page respondsToSelector:@selector(url)] && [page respondsToSelector:@selector(title)]
+        && [page respondsToSelector:@selector(canGoBack)] && [page respondsToSelector:@selector(canGoForward)];
+    return usable ? page : nil;
+}
 
 static void DPSetChrome(NSWindow *window, BOOL little) {
     NSView *titlebar = [window standardWindowButton:NSWindowCloseButton].superview.superview;

@@ -40,12 +40,12 @@ static id DPPageOf(id content) {
 
 static BOOL DPTabOpen(NSView *tab) {
     NSString *state = [DPSwiftValue(DPSwiftValue(DPSwiftValue(tab, @"viewModel"), @"stateSubject"), @"currentValue") description];
-    NSString *style = [[state componentsSeparatedByString:@"selectionStyle: "].lastObject substringToIndex:5];
+    NSString *style = [state componentsSeparatedByString:@"selectionStyle: "].lastObject;
     return ![style hasPrefix:@"nil"] && ![style hasPrefix:@"none"] && ![style hasPrefix:@"above"] && ![style hasPrefix:@"below"];
 }
 
 static void DPPage_setVisibility(id self, SEL _cmd, NSInteger visibility) {
-    [DPPages addObject:self];
+    if ([self respondsToSelector:@selector(visibility)] && [self respondsToSelector:@selector(discard)]) [DPPages addObject:self];
     DPCallOriginal(DPPage_setVisibility, self, visibility);
     if (visibility == DPPageVisible) {
         [DPDiscarded removeObject:self];

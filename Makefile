@@ -50,18 +50,25 @@ build/group-tabs: tests/group-tabs.m $(GROUP_TABS) | build
 build/mouse-back-forward: tests/mouse-back-forward.m src/dylib/Patches/MouseBackForward/MouseBackForward.m src/dylib/StdPatch/Hook.m $(wildcard src/dylib/StdPatch/*.h) | build
 	clang $(CFLAGS) -Isrc/dylib -framework AppKit -o $@ tests/mouse-back-forward.m src/dylib/StdPatch/Hook.m
 
+SPLIT := src/dylib/Patches/SplitClientHello
+
+build/split-client-hello: tests/split-client-hello.m $(wildcard $(SPLIT)/Split.[hm] $(SPLIT)/Write.[hm]) | build
+	clang $(CFLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -Isrc/dylib -framework Foundation -o $@ \
+		tests/split-client-hello.m $(SPLIT)/Split.m $(SPLIT)/Write.m
+
 build/vertical-tab-glow: tests/vertical-tab-glow.m $(wildcard src/dylib/Patches/HideVerticalTabGlow/*.[hm]) | build
 	clang $(CFLAGS) -Isrc/dylib -framework AppKit -framework QuartzCore -o $@ $<
 
 build/profile-symbols: tests/profile-symbols.m src/dylib/Patches/ProfileEmoji/Symbols.m | build
 	clang $(CFLAGS) -Isrc/dylib -framework AppKit -o $@ $^
 
-# Checks that need no Dia: grouping, the DiaTweaks update decision, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, Profile Emoji symbol search, and that Settings shows each tweak like its neighbours.
-check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/profile-symbols build/patches.json
+# Checks that need no Dia: grouping, the DiaTweaks update decision, mouse navigation, Hide Vertical Tab Glow, the Sidebar Grain textures, Profile Emoji symbol search, Split TLS ClientHello, and that Settings shows each tweak like its neighbours.
+check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-tab-glow build/split-client-hello build/profile-symbols build/patches.json
 	tests/tweaks-update
 	build/group-tabs
 	build/mouse-back-forward
 	build/vertical-tab-glow
+	build/split-client-hello
 	build/profile-symbols
 	tests/sidebar-grain
 	scripts/check-patches

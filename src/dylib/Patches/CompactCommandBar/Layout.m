@@ -72,13 +72,27 @@ static void DPCommandBar_layout(NSView *self, SEL _cmd) {
     toolbar.frame = frame;
 }
 
+// Dia's buttons have no intrinsic width, so Go's frame is the only measure.
+static CGFloat DPTextWidth(NSView *input, NSView *text, NSView *go) {
+    return MAX(0, NSWidth(input.bounds) - NSMinX(text.frame) - NSWidth(go.frame) - 2 * DPCommandBarSpacing);
+}
+
 static void DPCommandBarInput_layout(NSView *self, SEL _cmd) {
     DPCallOriginal(DPCommandBarInput_layout, self);
     NSView *go = DPGoButton(DPCompactToolbar(self.superview)), *text = DPCommandBarPart(self, DPDiaCommandBarText);
     if (!go || !text) return;
     NSRect frame = text.frame;
-    frame.size.width = MAX(0, NSWidth(self.bounds) - NSMinX(frame) - go.intrinsicContentSize.width - 2 * DPCommandBarSpacing);
+    frame.size.width = DPTextWidth(self, text, go);
     text.frame = frame;
+}
+
+// The toolbar lays Go out after the input, and Go widens to "Go ↵" as you type a URL.
+static void DPCommandBarButton_layout(NSView *self, SEL _cmd) {
+    DPCallOriginal(DPCommandBarButton_layout, self);
+    NSView *commandBar = self;
+    while (commandBar && !DPIsKind(commandBar, DPDiaCommandBar)) commandBar = commandBar.superview;
+    NSView *input = DPCommandBarPart(commandBar, DPDiaCommandBarInput), *text = DPCommandBarPart(input, DPDiaCommandBarText);
+    if (text && self == DPGoButton(DPCompactToolbar(commandBar)) && fabs(NSWidth(text.frame) - DPTextWidth(input, text, self)) > 0.5) input.needsLayout = YES;
 }
 
 static void DPCommandBarButton_setAccessibilityLabel(NSView *self, SEL _cmd, NSString *label) {
@@ -106,6 +120,7 @@ void DPInstallCommandBarLayout(void) {
     DPHook(DPDiaCommandBar, @selector(setFrameSize:), (IMP)DPCommandBar_setFrameSize);
     DPHook(DPDiaCommandBar, @selector(layout), (IMP)DPCommandBar_layout);
     DPHook(DPDiaCommandBarButton, @selector(setAccessibilityLabel:), (IMP)DPCommandBarButton_setAccessibilityLabel);
+    DPHook(DPDiaCommandBarButton, @selector(layout), (IMP)DPCommandBarButton_layout);
     DPHook(DPDiaCommandBarInput, @selector(layout), (IMP)DPCommandBarInput_layout);
     DPHook(DPDiaCommandBarToolbar, @selector(hitTest:), (IMP)DPCommandBarToolbar_hitTest);
 }

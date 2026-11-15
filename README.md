@@ -77,7 +77,22 @@ rm -rf /tmp/DiaTweaks && git clone --depth 1 https://github.com/JaceThings/DiaTw
 <details>
 <summary><strong>Is it safe?</strong></summary>
 
-It's built on your Mac from this code, and it doesn't send anything about you anywhere. It goes online only to check for updates, to load the preview pictures in Settings, and to download uBlock Origin from its GitHub releases if you turn that tweak on. A few tweaks look at what's in Dia to work: Group Tabs by Domain reads your tabs' addresses, and Tidy Tabs gives your tab titles and addresses to Apple's on-device model, which runs on your Mac. The password tweaks pass messages between your password manager and its extension without reading them.
+The first install is built on your Mac from this code, and updates are prebuilt downloads from this repo's GitHub releases, built there from the same code. It doesn't send anything about you anywhere. It goes online only to check for updates, to load the preview pictures in Settings, and to download uBlock Origin from its GitHub releases if you turn that tweak on. A few tweaks look at what's in Dia to work: Group Tabs by Domain reads your tabs' addresses, and Tidy Tabs gives your tab titles and addresses to Apple's on-device model, which runs on your Mac. The password tweaks pass messages between your password manager and its extension without reading them.
+
+</details>
+
+<details>
+<summary><strong>What are the security tradeoffs?</strong></summary>
+
+Patching Dia changes what protects it:
+
+- The patched Dia has no hardened runtime and loads `DiaPatches.dylib` from your Application Support folder, so other software running as you can change what it does.
+- The "DiaPatches Local Signing" certificate stays in your login keychain, and other software running as you can sign with it.
+- DiaTweaks updates are prebuilt downloads from this repo's GitHub releases. They're checked against the digest GitHub lists and aren't signed separately. To stop them installing when Dia quits, switch DiaTweaks away from Download and install on quit under **Automatic Updates**.
+- The Passwords tweaks start the original Dia without windows to reach Apple Passwords and 1Password, which only trust it.
+- Split TLS ClientHello, while it's on, runs Dia's network code inside Dia instead of its sandboxed helper, so a bug in that code reaches everything Dia can reach. Switch it off and relaunch Dia to get the helper back.
+- Dia's own updater is off. DiaTweaks looks for a new Dia when Dia opens or you open Software Update, so if you rarely quit Dia, security fixes can arrive late.
+- **Restore** puts the original Dia back but keeps the certificate. To remove it, delete "DiaPatches Local Signing" in Keychain Access.
 
 </details>
 

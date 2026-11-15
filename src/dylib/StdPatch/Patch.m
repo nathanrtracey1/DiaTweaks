@@ -88,13 +88,23 @@ NSString *DPRelayProblem(void) {
     return nil;
 }
 
+// The folder to take back is the one just below the nearest folder above that the user can open and write, which can be several levels up.
+static NSString *DPFolderToRepair(NSString *folder) {
+    NSString *support = DPAppSupport(@""), *repair = nil;
+    for (NSString *dir = folder; [dir hasPrefix:support]; dir = dir.stringByDeletingLastPathComponent) {
+        if (access(dir.fileSystemRepresentation, W_OK | X_OK) == 0) return repair && [NSFileManager.defaultManager fileExistsAtPath:repair] ? repair : nil;
+        repair = dir;
+    }
+    return nil;
+}
+
 NSString *DPWriteProblem(NSString *path, NSError *error) {
     path = error.userInfo[NSFilePathErrorKey] ?: path;
     NSString *problem = [NSString stringWithFormat:@"Couldn’t write %@: %@", path, error.localizedDescription];
-    if (error.code != NSFileWriteNoPermissionError) return problem;
-    NSString *folder = path.stringByDeletingLastPathComponent;
+    NSString *folder = error.code == NSFileWriteNoPermissionError ? DPFolderToRepair(path.stringByDeletingLastPathComponent) : nil;
+    if (!folder) return problem;
     if ([folder hasPrefix:NSHomeDirectory()]) folder = [@"$HOME" stringByAppendingString:[folder substringFromIndex:NSHomeDirectory().length]];
-    return [problem stringByAppendingFormat:@" To fix it, run sudo chown -R \"$(whoami)\" \"%@\" && chmod -R u+w \"%@\" in Terminal, then turn this on again.", folder, folder];
+    return [problem stringByAppendingFormat:@" To fix it, run sudo chown -R \"$(whoami)\" \"%@\" && chmod -R u+rwX \"%@\" in Terminal, then turn this on again.", folder, folder];
 }
 
 NSString *DPHostProblem(NSString *manifest, NSString *name) {

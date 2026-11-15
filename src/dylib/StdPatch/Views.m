@@ -35,6 +35,10 @@ BOOL DPIsKind(id object, const char *className) {
     return cls && [object isKindOfClass:cls];
 }
 
+BOOL DPIsFloatingChat(NSView *popover) {
+    return DPFindView(popover, ^BOOL(NSView *view) { return DPIsKind(view, DPDiaChatHeader); }) != nil;
+}
+
 BOOL DPHasLabel(NSView *view, NSString *accessibilityLabel) {
     return [view.accessibilityLabel isEqualToString:accessibilityLabel];
 }

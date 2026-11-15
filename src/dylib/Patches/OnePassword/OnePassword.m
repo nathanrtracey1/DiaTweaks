@@ -29,7 +29,7 @@ __attribute__((used, section("__DATA,__interpose"))) static const struct { const
 
 static NSString *DPOnePasswordProblem(DPPatch *patch) {
     NSString *host = DPAppSupport(@"Google/Chrome/NativeMessagingHosts/com.1password.1password.json");
-    if (![NSFileManager.defaultManager fileExistsAtPath:host]) return @"The 1Password app isn’t installed, or hasn’t set up its browser support yet. Open 1Password, then try again.";
+    if (!DPTesting && ![NSFileManager.defaultManager fileExistsAtPath:host]) return @"The 1Password app isn’t installed, or hasn’t set up its browser support yet. Open 1Password, then try again.";
     return DPRelayProblem();
 }
 

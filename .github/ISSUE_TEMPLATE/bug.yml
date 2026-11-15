@@ -59,6 +59,7 @@ body:
         - Hide History Suggestions
         - Hide New Tab Logo
         - Turn Off AI
+        - Morning Brief Language
         - Hide Chat Button
         - Hide Chats Button
         - Hide Upgrade Banner
@@ -70,7 +71,9 @@ body:
         - Window Corners
         - App Icon
         - Hide Window Controls
+        - Skip Account
         - Allow 1Password
+        - Allow Bitwarden
         - Allow iCloud Passkeys
         - Allow iCloud Passwords
         - Group Tabs by Domain
@@ -81,6 +84,7 @@ body:
         - Hide Link Address
         - Little Dia
         - Close with Escape
+        - Split TLS ClientHello
         - Patches pane in Settings
         - Installing, updating or restoring
         - Not sure

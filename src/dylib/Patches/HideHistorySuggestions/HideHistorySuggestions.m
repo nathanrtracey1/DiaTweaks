@@ -12,6 +12,8 @@ static BOOL DPFromHistory(id match) {
 }
 
 static id DPWithoutHistory(id result) {
+    SEL make = @selector(init:perProviderMatches:);
+    if (![[result class] instancesRespondToSelector:make]) return result;
     NSPredicate *kept = [NSPredicate predicateWithBlock:^BOOL(id match, id _) { return !DPFromHistory(match); }];
     NSDictionary<NSString *, NSArray *> *perProvider = [result valueForKey:@"perProviderMatches"];
     NSMutableDictionary *filtered = [NSMutableDictionary dictionaryWithCapacity:perProvider.count];
@@ -20,7 +22,7 @@ static id DPWithoutHistory(id result) {
         if (matches.count) filtered[provider] = matches;
     }
     NSArray *combined = [[result valueForKey:@"combinedMatches"] filteredArrayUsingPredicate:kept];
-    return ((id (*)(id, SEL, id, id))objc_msgSend)([[result class] alloc], @selector(init:perProviderMatches:), combined, filtered);
+    return ((id (*)(id, SEL, id, id))objc_msgSend)([[result class] alloc], make, combined, filtered);
 }
 
 static BOOL DPBrowser_autocomplete(id self, SEL _cmd, NSString *text, int cursor, BOOL prevent, BOOL fresh, id keyword, id *error, void (^completion)(id, BOOL)) {
