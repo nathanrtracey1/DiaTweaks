@@ -24,6 +24,10 @@ final class ProviderWire {
         }
         event("content_block_delta", ["type": "content_block_delta", "index": 0, "delta": ["type": "text_delta", "text": delta]])
     }
+    func failure(_ message: String, calls: (NSArray) -> Void) throws {
+        text((textStarted ? "\n\n" : "") + "**Model error:** " + message)
+        try finish(ChatProviderResult(), calls: calls)
+    }
     func finish(_ result: ChatProviderResult, calls: (NSArray) -> Void) throws {
         let tools: [ChatJSON] = try result.calls.map { call in
             guard let input = try JSONSerialization.jsonObject(with: Data(call.arguments.utf8)) as? ChatJSON else { throw ProviderError.invalidResponse }

@@ -9,6 +9,8 @@ SWIFTFLAGS := -target arm64-apple-macos14.0 -O -parse-as-library -wmo -module-na
 	-Xfrontend -disable-autolink-framework -Xfrontend FoundationModels
 PASSKEYS := src/dylib/Patches/Passkeys/extension
 EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file))
+PROVIDER_LOGOS := $(wildcard src/dylib/Patches/DiaChatModel/logos/*)
+PROVIDER_IMAGES := $(foreach file,$(PROVIDER_LOGOS),-Wl,-sectcreate,__TEXT,__dp_$(basename $(notdir $(file))),$(file))
 
 # Local tweaks compile against the headers of the installed dylib, so every header rides inside it.
 DYLIB_HEADERS := $(shell find src/dylib -name '*.h')
@@ -33,8 +35,8 @@ build/DiaPatchesSwift.o: $(DYLIB_SWIFT) | build
 $(HEADERS_BIN): $(DYLIB_HEADERS) scripts/pack-headers | build
 	scripts/pack-headers src/dylib $@
 
-build/DiaPatches.dylib: $(DYLIB_SOURCES) build/DiaPatchesSwift.o $(HEADERS_BIN) $(wildcard $(PASSKEYS)/*) | build
-	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -Wl,-sectcreate,__TEXT,__dp_headers,$(HEADERS_BIN) -framework AppKit -framework QuartzCore -framework Metal -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
+build/DiaPatches.dylib: $(DYLIB_SOURCES) build/DiaPatchesSwift.o $(HEADERS_BIN) $(wildcard $(PASSKEYS)/*) $(PROVIDER_LOGOS) | build
+	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -Wl,-sectcreate,__TEXT,__dp_headers,$(HEADERS_BIN) $(PROVIDER_IMAGES) -framework AppKit -framework QuartzCore -framework Metal -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
 		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(filter %.m %.o,$^)
 
 # With DIAPATCH_MANIFEST set, the dylib writes the patch list and exits as it loads, so diapatch never runs.

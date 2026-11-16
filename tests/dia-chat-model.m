@@ -47,14 +47,23 @@ void DPHandOffAndQuit(NSArray<NSString *> *args) { fputs("FAIL: the test must ne
 #pragma clang diagnostic ignored "-Wincomplete-implementation"
 @implementation DPChatProviders
 + (NSArray *)accounts { return @[]; }
++ (void)ensureApple {}
 + (void)refresh:(NSString *)identifier force:(BOOL)force completion:(void (^)(NSString *))completion {}
 @end
 #pragma clang diagnostic pop
 NSDictionary *DPSelectedChatProvider(void) { return nil; }
+NSDictionary *DPSelectedSafetyProvider(void) { return @{ @"api": @"enabled" }; }
 NSArray<NSView *> *DPProviderRows(void) { return @[]; }
 NSString *DPActiveChatChoice(void) { return gChoice ?: @"dia-default"; }
 NSString *DPChatChoiceTitle(NSString *choice) { return choice; }
+void DPAppendProviderModels(NSMenu *menu, NSArray<NSDictionary *> *accounts) {}
 void DPProviderChanged(void) {}
+void DPInstallChatGPTPage(void) {}
+void DPInstallChatModelErrors(void) {}
+void DPSetChatModelErrorAction(BOOL enabled) {}
+void DPRefreshChatGPTStatus(void) {}
+void DPCancelChatAccount(NSString *identifier) {}
+void DPSetChatSafety(NSDictionary *safety) {}
 void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
     DPSetAgentFilters(@"diaChatModel", nativeFilter, nil);
 }

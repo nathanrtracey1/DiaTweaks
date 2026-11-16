@@ -53,3 +53,10 @@ BOOL DPPathInsideChat(NSString *file, NSString *work, BOOL mayCreate) {
     }
     return YES;
 }
+
+NSString *DPChatReadRoot(NSString *file, NSString *work) {
+    if (!work.length) return nil;
+    if (DPPathInsideChat(file, work, NO)) return work;
+    NSString *attachments = [work.stringByDeletingLastPathComponent stringByAppendingPathComponent:@"attachments"];
+    return DPPathInsideChat(file, attachments, NO) ? attachments : nil;
+}

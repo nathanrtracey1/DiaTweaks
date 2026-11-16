@@ -7,6 +7,11 @@ static int cancellations;
 void DPSetAgentFilters(NSString *key, DPAgentFilter a, DPAgentFilter b) { requests = a; responses = b; }
 BOOL DPApproveCustomChatFile(NSDictionary *a, NSDictionary *b, NSString *c, DPAgentReply d) { return NO; }
 NSString *DPChatWorkDirectory(NSDictionary *a, NSString *b) { return nil; }
+NSDictionary *DPInlineChatAttachments(NSDictionary *body, NSString *context) { return body; }
+@implementation DPProviderAudit
++ (void)record:(NSString *)phase fields:(NSDictionary *)fields {}
+@end
+
 @implementation DPProviderSession {
     NSDictionary *_provider;
     BOOL _cancelled;

@@ -4,6 +4,8 @@
 #import "SafeMode/SafeMode.h"
 #import "Settings/Settings.h"
 
+void DPInstallChatGPTPage(void);
+
 // DiaPatches' constructor skips helper processes, so the test runs as one and loads the real patch
 // table itself: no hooks into Dia, and no reading the operator's settings.
 static NSString *DPTestDomain(void) { return [NSString stringWithFormat:@"com.diapatches.settings-test.%d", getpid()]; }
@@ -146,7 +148,7 @@ int main(void) {
         class_replaceMethod(preview, @selector(load), imp_implementationWithBlock(^(id self) {}), "v@:");
 
         DPLoadPatches();
-        expect(DPPatchCount == 105, @"the dylib lists 105 tweaks");
+        expect(DPPatchCount == 106, @"the dylib lists 106 tweaks");
         // Dia's classes aren't here, so every tweak would look unavailable; this test is about the layout.
         for (NSUInteger i = 0; i < DPPatchCount; i++) DPPatches[i]->unavailable = NO;
 
@@ -252,6 +254,22 @@ int main(void) {
         expectEqual(@(DPVisibleRowsIn(appearance)), @7, @"turning Blur on shows its two sliders again");
 
         expectEqual(DPPatchNamed(@"toggleToolbarVisibility")->title, @"Toggle Toolbar Visibility", @"Toggle Toolbar Visibility is Title Case");
+
+        DPTesting = YES;
+        DPInstallChatGPTPage();
+        DPPatch *chat = DPPatchNamed(@"diaChatModel");
+        DPPageView *chatPage = [[DPPageView alloc] initWithPatch:chat];
+        expectEqual(DPHeadersIn(chatPage), (@[ @"Model", @"Behavior", @"Providers" ]), @"Chat Model cards stay in order");
+        NSArray<NSView *> *behavior = DPRowsIn(DPGroupTitled(chatPage, @"Behavior"));
+        expect(behavior.count == 2 && DPRowTitled(behavior.firstObject, @"Fall Back to Dia Default") &&
+               DPRowTitled(behavior.lastObject, @"Safety Check"), @"Fall Back stays above Safety Check");
+        NSButton *addProvider = (NSButton *)DPFindView(DPGroupTitled(chatPage, @"Providers"), ^BOOL(NSView *view) {
+            return [view isKindOfClass:NSButton.class] && [view.accessibilityIdentifier isEqual:@"chatModelAddProvider"];
+        });
+        expect(addProvider && !addProvider.enabled, @"Add Provider is disabled with Chat Model off");
+        DPSetOn(@"diaChatModel", YES);
+        [chatPage sync];
+        expect(addProvider.enabled, @"Add Provider is enabled with Chat Model on");
 
         if (failures) {
             printf("%d failure%s\n", failures, failures == 1 ? "" : "s");

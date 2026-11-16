@@ -16,24 +16,36 @@ import Foundation
         lock.lock(); defer { lock.unlock() }
         guard !cancelled, task == nil else { completion("This chat run was cancelled or is already generating."); return }
         task = Task {
+            providerAudit("provider-start", ["api": provider["api"] ?? "", "model": provider["model"] ?? ""])
             var problem: String?
+            var recordedError = ""
+            let wire = ProviderWire(model: provider["model"] as? String ?? "", emit: chunk)
             do {
                 if let error = provider["error"] as? String { throw NSError(domain: "ChatModel", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
                 guard let payload = body as? ChatJSON else { throw ProviderError.invalidResponse }
-                let wire = ProviderWire(model: provider["model"] as? String ?? "", emit: chunk)
                 if provider["api"] as? String == "anthropic" {
                     try await streamAnthropic(payload, provider: provider, chunk: chunk, calls: calls)
                 } else if provider["api"] as? String == "apple" {
-                    let result = try await runAppleChat(payload, delta: wire.text)
+                    let result = provider["_safety"] as? Bool == true ? try await runAppleSafety(payload, delta: wire.text) : try await runAppleChat(payload, delta: wire.text)
                     try Task.checkCancellation()
                     try wire.finish(result, calls: calls)
                 } else {
-                    let result = try await runOpenAIChat(payload, provider: provider, history: reasoning, delta: wire.text)
+                    let connection = provider["api"] as? String == "chatgpt" ? try await ChatGPTAccess.provider(provider) : provider
+                    let result = try await runOpenAIChat(payload, provider: connection, history: reasoning, delta: wire.text)
                     try Task.checkCancellation()
                     try wire.finish(result, calls: calls)
                 }
-            } catch { problem = provider["error"] as? String ?? providerMessage(error) }
+            } catch {
+                recordedError = provider["error"] as? String ?? providerMessage(error)
+                if !(error is CancellationError) && !Task.isCancelled {
+                    var message = recordedError
+                    if case ChatGPTError.usage = error { message += " [Manage usage](https://chatgpt.com/settings/usage)." }
+                    do { try wire.failure(message, calls: calls) }
+                    catch { problem = providerMessage(error) }
+                }
+            }
             self.finish()
+            providerAudit("provider-finished", ["api": provider["api"] ?? "", "error": recordedError])
             completion(problem)
         }
     }

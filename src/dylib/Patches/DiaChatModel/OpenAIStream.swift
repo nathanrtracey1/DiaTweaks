@@ -19,9 +19,14 @@ func runOpenAIChat(_ payload: ChatJSON, provider: ChatJSON, history: ProviderRea
     let converted = try OpenAIChatRequest(payload, model: provider["model"] as? String ?? "", responses: responses)
     var body = converted.body
     if responses { history.restore(into: &body) }
+    if provider["api"] as? String == "chatgpt" { body = chatGPTRequest(body) }
     var request = try ProviderHTTP.request(provider, path: responses ? "responses" : "chat/completions")
     request.httpMethod = "POST"
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    let auditID = UUID().uuidString
+    let system = OpenAIChatRequest.text(payload["system"]).lowercased()
+    providerAudit("http-request", ["request": auditID, "api": provider["api"] ?? "", "model": body["model"] ?? "",
+        "system_bytes": system.utf8.count, "native_identity": system.contains("anthropic") && system.contains("opus")])
     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
     let session = ProviderHTTP.session()
     defer { session.invalidateAndCancel() }
@@ -53,12 +58,16 @@ func runOpenAIChat(_ payload: ChatJSON, provider: ChatJSON, history: ProviderRea
                     result.calls.append(ChatToolCall(id: id, name: native, arguments: arguments))
                 }
             case "response.completed":
+                providerAudit("http-completed", ["request": auditID, "model": (event["response"] as? ChatJSON)?["model"] ?? ""])
                 history.capture(event["response"] as? ChatJSON ?? [:])
                 finished = true
                 let usage = (event["response"] as? ChatJSON)?["usage"] as? ChatJSON
                 result.inputTokens = usage?["input_tokens"] as? Int ?? 0
                 result.outputTokens = usage?["output_tokens"] as? Int ?? 0
-            case "error", "response.failed", "response.incomplete": throw ProviderError.interrupted
+            case "error", "response.failed", "response.incomplete":
+                let error = (event["response"] as? ChatJSON)?["error"] as? ChatJSON ?? event["error"] as? ChatJSON ?? event
+                if let code = error["code"] as? String, code.hasPrefix("subscription_sharing_usage_") { throw ChatGPTError.usage }
+                throw ProviderError.interrupted
             default: break
             }
         } else {

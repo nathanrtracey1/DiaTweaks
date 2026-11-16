@@ -17,15 +17,16 @@ enum ProviderStore {
               let object = try? JSONSerialization.jsonObject(with: data) as? ChatJSON,
               object["version"] as? Int == 1, let values = object["accounts"] as? [ChatJSON],
               values.allSatisfy(validProvider) else { loadFailed = true; return [] }
-        loaded = values
+        loaded = values.map(ProviderBranding.normalized)
         return loaded ?? []
     }
     static func write(_ values: [ChatJSON]) throws {
         guard !loadFailed else { throw ProviderError.configuration }
-        let data = try JSONSerialization.data(withJSONObject: ["version": 1, "accounts": values], options: .sortedKeys)
+        let normalized = values.map(ProviderBranding.normalized)
+        let data = try JSONSerialization.data(withJSONObject: ["version": 1, "accounts": normalized], options: .sortedKeys)
         try FileManager.default.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: path, options: .atomic)
-        loaded = values
+        loaded = normalized
     }
     static func change(_ id: String, _ update: (inout ChatJSON) throws -> Void) throws {
         lock.lock(); defer { lock.unlock() }
@@ -49,7 +50,7 @@ enum ProviderStore {
 }
 
 enum ProviderError: LocalizedError {
-    case removed, invalidURL, keychain(Int32), authentication, rateLimited, unsupported, interrupted, invalidResponse, configuration, appleUnavailable, appleContext
+    case removed, invalidURL, keychain(Int32), authentication, rateLimited, unsupported, interrupted, invalidResponse, configuration, appleUnavailable, appleContext, appleTimeout, appleFileURL
     var errorDescription: String? {
         switch self {
         case .removed: return "This provider account is no longer available."
@@ -62,7 +63,9 @@ enum ProviderError: LocalizedError {
         case .invalidResponse: return "The provider returned an invalid response."
         case .configuration: return "The saved provider configuration could not be read. Restore it before saving changes."
         case .appleUnavailable: return "Apple Intelligence is unavailable. Check that it is enabled and its model has finished downloading."
+        case .appleTimeout: return "Apple Intelligence took too long to respond. Try a shorter chat, or choose another model."
         case .appleContext: return "This chat or tool result exceeds the on-device model’s context capacity."
+        case .appleFileURL: return "The model selected a file tool for a web address. Use the page or web tool instead."
         }
     }
 }

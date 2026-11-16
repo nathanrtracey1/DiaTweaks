@@ -43,5 +43,5 @@ void DPProviderChanged(void) {
 }
 
 NSArray<NSView *> *DPProviderRows(void) {
-    return @[ [NSButton buttonWithTitle:@"Manage Providers…" target:DPProviderManager.class action:@selector(show)] ];
+    return [@[DPInlineProviderList()] arrayByAddingObjectsFromArray:DPChatGPTStatusRows()];
 }

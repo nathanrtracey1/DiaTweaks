@@ -86,6 +86,7 @@ body:
         - Hide Default Browser Banner
         - Chat Model
         - Fall Back to Dia Default
+        - Safety Check
         - Turn Off AI
         - Morning Brief Language
         - Exclude Sites from AI History Search

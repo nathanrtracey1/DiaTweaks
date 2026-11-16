@@ -9,11 +9,7 @@ static void DPModelReply(DPAgentReply reply, NSString *message, NSDictionary *pa
     NSDictionary *payload = message[@"payload"];
     if (![payload isKindOfClass:NSDictionary.class]) return NO;
     if ([message[@"type"] isEqual:@"CHECK"]) {
-        NSString *identifier = payload[@"tool_use_id"];
-        if (![identifier isKindOfClass:NSString.class]) return NO;
-        NSDictionary *record;
-        @synchronized (self) { record = self.calls[identifier]; [self.calls removeObjectForKey:identifier]; }
-        return record && DPApproveCustomChatFile(message, record[@"call"], record[@"work"], reply);
+        return [self check:message reply:reply];
     }
     if (![message[@"type"] isEqual:@"LLM_REQUEST"] || ![message[@"msg"] isKindOfClass:NSString.class]) return NO;
     id body = payload[@"body"];
@@ -23,6 +19,10 @@ static void DPModelReply(DPAgentReply reply, NSString *message, NSDictionary *pa
     if (![body isKindOfClass:NSDictionary.class]) {
         DPModelReply(reply, msg, @{ @"error": @"Dia sent an unsupported model request." }, NO); return YES;
     }
+    self.body = body;
+    if ([self.provider[@"api"] isEqual:@"dia"]) return NO;
+    body = DPInlineChatAttachments(body, self.context);
+    self.body = body;
     if ([payload[@"endpoint"] isEqual:@"count-tokens"]) {
         NSUInteger estimate = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil].length;
         DPModelReply(reply, msg, @{ @"status_code": @200, @"headers": @{ @"content-type": @"application/json" },
@@ -40,12 +40,18 @@ static void DPModelReply(DPAgentReply reply, NSString *message, NSDictionary *pa
         started = YES;
         DPModelReply(reply, msg, part, YES);
     } calls:^(NSArray *calls) {
-        if (!work) return;
         @synchronized (self) {
-            for (NSDictionary *call in calls) self.calls[call[@"id"]] = @{ @"call": call, @"work": work };
+            for (NSDictionary *call in calls) self.calls[call[@"id"]] = @{ @"call": call, @"work": work ?: @"" };
         }
     } completion:^(NSString *error) {
-        DPModelReply(reply, msg, error ? @{ @"error": error } : @{ @"done": @YES }, error == nil);
+        if (!error) { DPModelReply(reply, msg, @{ @"done": @YES }, YES); return; }
+        NSDictionary *failure = @{ @"type": @"error", @"error": @{ @"type": @"invalid_request_error", @"message": error } };
+        NSString *json = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:failure options:0 error:nil] encoding:NSUTF8StringEncoding];
+        // An IPC failure is retried by Dia; provider capability errors must reach the chat once.
+        NSString *data = started ? [NSString stringWithFormat:@"event: error\ndata: %@\n\n", json] : json;
+        NSMutableDictionary *part = [@{ @"data": data, @"done": @YES } mutableCopy];
+        if (!started) { part[@"status_code"] = @400; part[@"headers"] = @{ @"content-type": @"application/json" }; part[@"body"] = json; }
+        DPModelReply(reply, msg, part, YES);
     }];
     return YES;
 }

@@ -13,6 +13,7 @@ import Foundation
                   let api = input["api"] as? String, ["responses", "chat-completions", "anthropic"].contains(api),
                   let base = input["baseURL"] as? String else { throw ProviderError.invalidURL }
             _ = try ProviderHTTP.base(base)
+            if let preset = input["preset"], !(preset is String && ProviderBranding.presets.contains(preset as! String)) { throw ProviderError.configuration }
             var values = ProviderStore.accounts()
             let index = values.firstIndex { $0["id"] as? String == id }
             var provider = index.map { values[$0] } ?? ["id": id, "autoAdd": true, "visibility": [String: Bool](), "catalog": [ChatJSON]()]
@@ -20,6 +21,7 @@ import Foundation
             if let key { try ProviderSecrets.write(id, key) }
             let connectionChanged = provider["baseURL"] as? String != base || provider["api"] as? String != api || key != nil
             provider["name"] = name; provider["api"] = api; provider["baseURL"] = base
+            if let preset = input["preset"] { provider["preset"] = preset }
             provider["revision"] = (provider["revision"] as? Int ?? 0) + 1
             if connectionChanged { provider["refreshed"] = 0 }
             if let index { values[index] = provider } else { values.append(provider) }
@@ -50,6 +52,7 @@ import Foundation
 
 func providerMessage(_ error: Error) -> String {
     if let error = error as? ProviderError { return error.localizedDescription }
+    if let error = error as? ChatGPTError { return error.localizedDescription }
     if error is CancellationError { return "The model request was cancelled." }
     if let error = error as? ChatProviderError {
         switch error {

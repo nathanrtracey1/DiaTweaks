@@ -1,6 +1,7 @@
 #import "ProviderRun.h"
 
-static NSDictionary *DPCurrentProvider;
+NSData *DPChatAgentRequest(NSData *, NSString *);
+static NSDictionary *DPCurrentProvider, *DPCurrentSafety;
 static DPAgentFilter DPNativeChatFilter;
 static NSMutableDictionary<NSString *, DPChatRun *> *DPPendingRuns, *DPActiveRuns;
 
@@ -16,12 +17,14 @@ static NSData *DPProviderRequest(NSData *line, DPAgentReply reply) {
     NSString *handler = message[@"handler"];
     @synchronized (DPChatRun.class) {
         if ([message[@"type"] isEqual:@"CANCEL"] && [handler isKindOfClass:NSString.class]) {
-            [DPActiveRuns[handler].session cancel]; [DPActiveRuns removeObjectForKey:handler];
+            [DPActiveRuns[handler] cancel]; [DPActiveRuns removeObjectForKey:handler];
             DPRefreshChatFilters();
         }
         if (!DPCurrentProvider) return DPNativeChatFilter ? DPNativeChatFilter(line, reply) : line;
         if (![message[@"type"] isEqual:@"RUN"]) return line;
         NSMutableDictionary *run = message[@"payload"] ?: message;
+        [NSClassFromString(@"DPProviderAudit") record:@"route" fields:@{ @"agent": [run isKindOfClass:NSDictionary.class] ? run[@"agent"] ?: @"" : @"",
+            @"api": DPCurrentProvider[@"api"] ?: @"", @"model": DPCurrentProvider[@"model"] ?: @"" }];
         if (![run isKindOfClass:NSMutableDictionary.class] || ![run[@"agent"] isEqual:@"default"] || !DPCurrentProvider) return line;
         NSString *msg = message[@"msg"];
         if (![msg isKindOfClass:NSString.class]) return nil;
@@ -33,15 +36,18 @@ static NSData *DPProviderRequest(NSData *line, DPAgentReply reply) {
             reply(@{ @"type": @"ACK", @"msg": msg, @"success": @NO, @"payload": @{ @"error": @"Dia’s agent request format changed." } }); return nil;
         }
         NSMutableDictionary *env = [settings[@"env"] isKindOfClass:NSMutableDictionary.class] ? settings[@"env"] : [NSMutableDictionary new];
-        env[@"ENABLE_TOOL_SEARCH"] = @"false"; settings[@"env"] = env;
+        BOOL native = [DPCurrentProvider[@"api"] isEqual:@"dia"];
+        if (!native) { env[@"ENABLE_TOOL_SEARCH"] = @"false"; settings[@"env"] = env; }
         NSData *rewritten = [NSJSONSerialization dataWithJSONObject:message options:0 error:nil];
         if (!rewritten) return line;
         DPChatRun *state = [DPChatRun new];
         state.provider = DPCurrentProvider;
-        state.session = [[DPProviderSession alloc] initWithProvider:state.provider];
+        state.safety = DPCurrentSafety ?: @{ @"api": @"enabled" };
+        if (!native) state.session = [[DPProviderSession alloc] initWithProvider:state.provider];
         state.calls = [NSMutableDictionary new];
+        state.reviews = [NSMutableSet new];
         DPPendingRuns[msg] = state;
-        return rewritten;
+        return native ? DPChatAgentRequest(rewritten, DPCurrentProvider[@"model"]) : rewritten;
     }
 }
 
@@ -63,7 +69,7 @@ static NSData *DPProviderResponse(NSData *line, DPAgentReply reply) {
         if (![handler isKindOfClass:NSString.class]) return line;
         run = DPActiveRuns[handler];
         if ([message[@"type"] isEqual:@"DONE"]) {
-            [run.session cancel]; [DPActiveRuns removeObjectForKey:handler];
+            [run cancel]; [DPActiveRuns removeObjectForKey:handler];
             DPRefreshChatFilters();
             return line;
         }
@@ -82,8 +88,8 @@ void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
         DPCurrentProvider = [provider copy];
         DPNativeChatFilter = [nativeFilter copy];
         if (!provider && !nativeFilter) {
-            for (DPChatRun *run in DPActiveRuns.allValues) [run.session cancel];
-            for (DPChatRun *run in DPPendingRuns.allValues) [run.session cancel];
+            for (DPChatRun *run in DPActiveRuns.allValues) [run cancel];
+            for (DPChatRun *run in DPPendingRuns.allValues) [run cancel];
             [DPActiveRuns removeAllObjects];
             [DPPendingRuns removeAllObjects];
         }
@@ -95,5 +101,14 @@ void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
         DPActiveRuns = DPActiveRuns ?: [NSMutableDictionary new];
         DPSetAgentFilters(@"diaChatModel", ^NSData *(NSData *line, DPAgentReply reply) { return DPProviderRequest(line, reply); },
             ^NSData *(NSData *line, DPAgentReply reply) { return DPProviderResponse(line, reply); });
+    }
+}
+
+void DPSetChatSafety(NSDictionary *provider) { @synchronized (DPChatRun.class) { DPCurrentSafety = [provider copy]; } }
+
+void DPCancelChatAccount(NSString *identifier) {
+    @synchronized (DPChatRun.class) {
+        for (DPChatRun *run in [DPActiveRuns.allValues arrayByAddingObjectsFromArray:DPPendingRuns.allValues ?: @[]])
+            if ([run.provider[@"id"] isEqual:identifier]) [run cancel];
     }
 }

@@ -48,7 +48,14 @@ void DPApplyDiaChatModel(DPPatch *patch) {
     if (active) filter = ^NSData *(NSData *line, DPAgentReply reply) {
         return DPTurnOffAI.on ? line : DPChatAgentRequest(line, model);
     };
-    DPSetChatProvider(active ? DPSelectedChatProvider() : nil, filter);
+    NSDictionary *safety = DPSelectedSafetyProvider();
+    NSDictionary *provider = active ? DPSelectedChatProvider() : nil;
+    if (active && !provider && [safety[@"api"] isEqual:@"disabled"])
+        provider = @{ @"api": @"dia", @"model": model ?: @"" };
+    DPSetChatSafety(safety);
+    DPSetChatProvider(provider, filter);
+    DPSetChatModelErrorAction(active && ![DPActiveChatChoice() isEqual:@"dia-default"]);
+    DPRefreshChatGPTStatus();
     DPRefreshDiaModelPicker();
     [NSNotificationCenter.defaultCenter postNotificationName:DPPatchesDidChangeNotification object:nil];
     DPOfferChatModelRelaunch(patch);
@@ -56,6 +63,10 @@ void DPApplyDiaChatModel(DPPatch *patch) {
 
 static void DPInstallDiaChatModel(void) {
     DPInstallDiaModelOverview();
+    DPInstallChatGPTPage();
+    DPInstallChatModelErrors();
+    [NSNotificationCenter.defaultCenter addObserverForName:@"DPSignOutChatAccount" object:nil queue:nil
+        usingBlock:^(NSNotification *note) { DPCancelChatAccount(note.object); }];
     [NSNotificationCenter.defaultCenter addObserverForName:@"DPChatProvidersChanged" object:nil queue:NSOperationQueue.mainQueue
         usingBlock:^(NSNotification *note) { DPProviderChanged(); }];
     DPApplyDiaChatModel(&DPDiaChatModel);
@@ -79,16 +90,7 @@ NSMenu *DPDiaChatModels(void) {
     NSString *saved = DPChoice(&DPDiaChatModel);
     if (!DPDiaChatModelFallback.on && saved.length && ![saved hasPrefix:@"provider:"] && ![saved isEqual:DPDefaultDiaModel] && ![models containsObject:saved])
         [menu addItemWithTitle:saved action:nil keyEquivalent:@""].representedObject = saved;
-    for (NSDictionary *account in DPChatProviders.accounts) {
-        [menu addItem:NSMenuItem.separatorItem];
-        NSMenuItem *heading = [menu addItemWithTitle:account[@"name"] action:nil keyEquivalent:@""];
-        heading.enabled = NO;
-        for (NSDictionary *item in account[@"catalog"]) {
-            if (![account[@"visibility"][item[@"id"]] boolValue]) continue;
-            NSString *choice = [NSString stringWithFormat:@"provider:%@/%@", account[@"id"], item[@"id"]];
-            [menu addItemWithTitle:item[@"name"] action:nil keyEquivalent:@""].representedObject = choice;
-        }
-    }
+    DPAppendProviderModels(menu, DPChatProviders.accounts);
     NSString *active = DPActiveChatChoice();
     if ([active hasPrefix:@"provider:"] && ![menu.itemArray filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSMenuItem *item, NSDictionary *bindings) {
         return [item.representedObject isEqual:active];

@@ -23,7 +23,13 @@ enum ProviderHTTP {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         return request
     }
-    static func session() -> URLSession { URLSession(configuration: .ephemeral, delegate: ProviderNoRedirect(), delegateQueue: nil) }
+    static func session() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        #if CHAT_MODEL_TESTS
+        configuration.protocolClasses = ProviderTestTransport.protocols + (configuration.protocolClasses ?? [])
+        #endif
+        return URLSession(configuration: configuration, delegate: ProviderNoRedirect(), delegateQueue: nil)
+    }
     static func check(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { throw ProviderError.invalidResponse }
         switch http.statusCode {
@@ -35,6 +41,7 @@ enum ProviderHTTP {
     }
     static func catalog(_ account: ChatJSON) async throws -> [ChatJSON] {
         if account["api"] as? String == "apple" { return try AppleProvider.catalog() }
+        if account["api"] as? String == "chatgpt" { return try await ChatGPTAccess.catalog(account) }
         let session = session(); defer { session.invalidateAndCancel() }
         var catalog: [ChatJSON] = [], seen = Set<String>(), cursors = Set<String>()
         var cursor: String?

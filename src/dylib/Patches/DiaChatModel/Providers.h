@@ -1,6 +1,10 @@
 #import "StdPatch/StdPatch.h"
 #import "Patches/AgentTransport/AgentRelay.h"
 
+@interface DPProviderAudit : NSObject
++ (void)record:(NSString *)phase fields:(NSDictionary *)fields;
+@end
+
 @interface DPChatProviders : NSObject
 + (NSArray<NSDictionary *> *)accounts;
 + (NSDictionary *)account:(NSString *)identifier;
@@ -14,8 +18,8 @@
 + (NSDictionary *)snapshot:(NSString *)identifier;
 + (void)ensureApple;
 + (NSString *)status:(NSString *)identifier;
-+ (id)run:(NSDictionary *)body provider:(NSDictionary *)provider delta:(void (^)(NSString *))delta
-    completion:(void (^)(NSDictionary *, NSString *))completion;
++ (NSString *)brand:(NSDictionary *)provider;
++ (NSString *)preset:(NSDictionary *)provider;
 @end
 
 @interface DPProviderSession : NSObject
@@ -27,16 +31,38 @@
 
 void DPProviderChanged(void);
 void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter);
+void DPCancelChatAccount(NSString *identifier);
+NSButton *DPChatGPTButton(void);
+NSImageView *DPProviderIcon(NSDictionary *provider);
+NSImage *DPProviderLogo(NSString *brand);
+void DPRefreshChatGPTStatus(void);
+void DPInstallChatGPTPage(void);
+void DPInstallChatModelErrors(void);
+void DPSetChatModelErrorAction(BOOL enabled);
+void DPOpenChatModelSettings(void);
+@interface DPChatGPT : NSObject
++ (void)start:(NSString *)identifier completion:(void (^)(NSString *))completion;
++ (void)cancel;
++ (void)showWelcome;
++ (void)signOut:(NSString *)identifier completion:(void (^)(NSString *))completion;
+@end
 NSArray<NSView *> *DPProviderRows(void);
 NSDictionary *DPSelectedChatProvider(void);
+NSDictionary *DPSelectedSafetyProvider(void);
+void DPSetChatSafety(NSDictionary *provider);
 NSString *DPActiveChatChoice(void);
 NSString *DPChatChoiceTitle(NSString *choice);
 NSMenu *DPDiaChatModels(void);
+void DPAppendProviderModels(NSMenu *menu, NSArray<NSDictionary *> *accounts);
+NSArray<NSView *> *DPChatGPTStatusRows(void);
+void DPConnectChatGPT(NSString *identifier, NSWindow *parent);
+void DPConnectChatGPTAccount(NSString *identifier, NSWindow *parent, void (^finished)(void));
 NSString *DPChatWorkDirectory(NSDictionary *body, NSString *context);
 NSString *DPAbsoluteChatPath(id value, NSString *directory);
 BOOL DPPathInsideChat(NSString *file, NSString *work, BOOL mayCreate);
 NSString *DPReportEntry(NSDictionary *input, NSString *work);
 BOOL DPApproveCustomChatFile(NSDictionary *frame, NSDictionary *call, NSString *work, DPAgentReply reply);
-@interface DPProviderManager : NSWindowController
-+ (void)show;
-@end
+BOOL DPChatCheckMatches(NSDictionary *payload, NSDictionary *call);
+NSDictionary *DPInlineChatAttachments(NSDictionary *body, NSString *context);
+NSString *DPChatReadRoot(NSString *file, NSString *work);
+NSView *DPInlineProviderList(void);
