@@ -6,17 +6,20 @@ NSString *DPSelectedDiaChatModel(NSString *, NSArray<NSString *> *, BOOL);
 void DPRefreshDiaModelPicker(void);
 void DPApplyDiaChatModel(DPPatch *);
 
-NSDictionary *DPSelectedChatProvider(void) {
+static NSDictionary *DPSelectedProvider(BOOL credentials) {
     NSString *choice = DPChoice(&DPDiaChatModel);
     if (![choice hasPrefix:@"provider:"]) return nil;
     NSArray *parts = [[choice substringFromIndex:9] componentsSeparatedByString:@"/"];
     NSString *identifier = parts.firstObject;
     NSString *model = [choice substringFromIndex:MIN(choice.length, 10 + identifier.length)];
-    NSMutableDictionary *provider = [[DPChatProviders snapshot:identifier] mutableCopy];
+    NSMutableDictionary *provider = [(credentials ? [DPChatProviders snapshot:identifier] : [DPChatProviders account:identifier]) mutableCopy];
     if (!model.length) provider[@"error"] = @"This provider model is no longer configured.";
     provider[@"model"] = model;
     return provider;
 }
+
+NSDictionary *DPSelectedChatProvider(void) { return DPSelectedProvider(YES); }
+NSDictionary *DPSelectedChatAccount(void) { return DPSelectedProvider(NO); }
 
 NSString *DPActiveChatChoice(void) {
     NSString *choice = DPChoice(&DPDiaChatModel);

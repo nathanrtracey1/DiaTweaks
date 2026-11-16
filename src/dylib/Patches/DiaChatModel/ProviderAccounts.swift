@@ -34,10 +34,12 @@ import Foundation
     }
     @objc static func snapshot(_ id: String) -> NSDictionary {
         guard var value = account(id) as? ChatJSON else { return ["error": ProviderError.removed.localizedDescription] }
+        if value["api"] as? String == "apple" { return value as NSDictionary }
         do { value["credential"] = try ProviderSecrets.read(id) }
         catch { value["error"] = providerMessage(error) }
         return value as NSDictionary
     }
+    @objc static func credentialAvailable(_ id: String) -> Bool { ProviderSecrets.available(id) }
     @objc static func remove(_ id: String) -> String? {
         ProviderStore.lock.lock(); defer { ProviderStore.lock.unlock() }
         do {

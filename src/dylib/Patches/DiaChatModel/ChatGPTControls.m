@@ -28,7 +28,7 @@ void DPConnectChatGPT(NSString *identifier, NSWindow *parent) { DPConnectChatGPT
 - (void)connect:(NSView *)sender { DPConnectChatGPT(nil, sender.window); }
 - (void)usage:(id)sender { [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:@"https://chatgpt.com/settings/usage"]]; }
 - (void)signOut:(NSView *)sender {
-    NSDictionary *provider = DPSelectedChatProvider();
+    NSDictionary *provider = DPSelectedChatAccount();
     if (![provider[@"api"] isEqual:@"chatgpt"]) return;
     [DPChatGPT signOut:provider[@"id"] completion:^(NSString *error) {
         if (!error) return;

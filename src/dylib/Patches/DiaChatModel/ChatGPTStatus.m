@@ -32,10 +32,11 @@ void DPOrderChatModelOptions(NSView *page);
 - (void)usage:(id)sender { [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:@"https://chatgpt.com/settings/usage"]]; }
 - (void)viewDidMoveToWindow { [super viewDidMoveToWindow]; [self sync]; }
 - (void)sync {
-    NSDictionary *provider = DPSelectedChatProvider();
+    NSDictionary *provider = DPSelectedChatAccount();
     BOOL apple = [provider[@"api"] isEqual:@"apple"];
     BOOL active = DPPatchNamed(@"diaChatModel")->on && (apple || [provider[@"api"] isEqual:@"chatgpt"]);
-    BOOL connected = [provider[@"credential"] length] && !provider[@"error"];
+    BOOL connected = [provider[@"api"] isEqual:@"chatgpt"] && [provider[@"id"] length] &&
+        [DPChatProviders credentialAvailable:provider[@"id"]] && !provider[@"error"];
     self.status.stringValue = apple ? @"Limited to basic page, web and file tools. Connectors aren’t supported." :
         connected ? @"Using ChatGPT plan" : @"Reconnect your ChatGPT account";
     self.usage.hidden = apple || !connected;

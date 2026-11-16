@@ -16,6 +16,7 @@
 + (NSString *)addModel:(NSString *)identifier model:(NSString *)model;
 + (void)refresh:(NSString *)identifier force:(BOOL)force completion:(void (^)(NSString *))completion;
 + (NSDictionary *)snapshot:(NSString *)identifier;
++ (BOOL)credentialAvailable:(NSString *)identifier;
 + (void)ensureApple;
 + (NSString *)status:(NSString *)identifier;
 + (NSString *)brand:(NSDictionary *)provider;
@@ -48,6 +49,7 @@ void DPOpenChatModelSettings(void);
 @end
 NSArray<NSView *> *DPProviderRows(void);
 NSDictionary *DPSelectedChatProvider(void);
+NSDictionary *DPSelectedChatAccount(void);
 NSDictionary *DPSelectedSafetyProvider(void);
 void DPSetChatSafety(NSDictionary *provider);
 NSString *DPActiveChatChoice(void);

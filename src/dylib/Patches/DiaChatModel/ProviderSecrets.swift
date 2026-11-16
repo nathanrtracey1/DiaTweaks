@@ -8,6 +8,14 @@ enum ProviderSecrets {
          kSecAttrAccount as String: id]
     }
     static func read(_ id: String) throws -> String? {
+        try ProviderSecretsCache.read(id) { try readStored(id) }
+    }
+    static func available(_ id: String) -> Bool { ProviderSecretsCache.available(id) }
+    static func write(_ id: String, _ key: String?) throws {
+        let value = key.flatMap { $0.isEmpty ? nil : $0 }
+        try ProviderSecretsCache.write(id, value: value) { try writeStored(id, value) }
+    }
+    private static func readStored(_ id: String) throws -> String? {
         var query = query(id)
         query[kSecReturnData as String] = true
         let context = LAContext()
@@ -21,7 +29,7 @@ enum ProviderSecrets {
         }
         return key
     }
-    static func write(_ id: String, _ key: String?) throws {
+    private static func writeStored(_ id: String, _ key: String?) throws {
         let query = query(id)
         guard let key, !key.isEmpty else {
             let status = SecItemDelete(query as CFDictionary)

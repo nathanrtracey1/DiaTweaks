@@ -5,6 +5,16 @@ func testProviderStore() throws {
     let input: ChatJSON = ["id": id, "name": "Fixture", "api": "responses", "baseURL": "http://127.0.0.1:1/v1"]
     precondition(ChatProviders.save(input as NSDictionary, key: "fixture-key") == nil)
     precondition(ChatProviders.snapshot(id)["credential"] as? String == "fixture-key")
+    let reads = ProviderSecrets.reads
+    precondition(ChatProviders.account(id) != nil && ChatProviders.credentialAvailable(id))
+    precondition(ProviderSecrets.reads == reads)
+    let appleID = UUID().uuidString
+    var accounts = ProviderStore.accounts()
+    accounts.append(["id": appleID, "name": "Apple Intelligence", "api": "apple", "baseURL": "", "autoAdd": true,
+        "visibility": [String: Bool](), "catalog": [ChatJSON]()])
+    try ProviderStore.write(accounts)
+    precondition(ChatProviders.snapshot(appleID)["credential"] == nil && ProviderSecrets.reads == reads)
+    try ProviderStore.write(ProviderStore.accounts().filter { $0["id"] as? String != appleID })
     let saved = try String(contentsOf: ProviderStore.path, encoding: .utf8)
     precondition(!saved.contains("fixture-key"))
     try ProviderStore.change(id) { account in

@@ -12,6 +12,7 @@ import Foundation
         try testProviderWireFailure()
         try await testProviderDeadline()
         try testProviderBranding()
+        try testProviderSecretCache()
         try testProviderStore()
         try testChatGPTIdentity()
         try await testChatGPTCallback()
@@ -25,8 +26,8 @@ import Foundation
     }
 }
 SWIFT
-swiftc -DCHAT_MODEL_TESTS -parse-as-library "$patch"/OpenAI*.swift "$patch"/AnthropicStream.swift "$patch"/Apple*.swift "$patch"/ChatGPT*.swift "$patch"/Provider{Audit,Branding,Deadline,Store,Validation,Accounts,Catalog,HTTP,Reasoning,Wire}.swift \
-    tests/provider-secrets.swift tests/provider-store.swift tests/provider-branding.swift tests/provider-deadline.swift tests/provider-wire.swift tests/provider-http.swift tests/apple-input.swift tests/apple-tools.swift tests/apple-chat.swift tests/chatgpt-identity.swift tests/chatgpt-transport.swift tests/chatgpt-callback.swift "$temporary/main.swift" -o "$temporary/check"
+swiftc -DCHAT_MODEL_TESTS -parse-as-library "$patch"/OpenAI*.swift "$patch"/AnthropicStream.swift "$patch"/Apple*.swift "$patch"/ChatGPT*.swift "$patch"/Provider{Audit,Branding,Deadline,SecretsCache,Store,Validation,Accounts,Catalog,HTTP,Reasoning,Wire}.swift \
+    tests/provider-secrets.swift tests/provider-secret-cache.swift tests/provider-store.swift tests/provider-branding.swift tests/provider-deadline.swift tests/provider-wire.swift tests/provider-http.swift tests/apple-input.swift tests/apple-tools.swift tests/apple-chat.swift tests/chatgpt-identity.swift tests/chatgpt-transport.swift tests/chatgpt-callback.swift "$temporary/main.swift" -o "$temporary/check"
 clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-routing.m "$patch/ProviderRouting.m" "$patch/ProviderRun.m" "$patch/SafetyCheck.m" "$patch/SafetyReview.m" "$patch/AgentRequest.m" -o "$temporary/routing"
 "$temporary/routing"
 clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-safety.m "$patch/ProviderRun.m" "$patch/SafetyCheck.m" "$patch/SafetyReview.m" -o "$temporary/safety"
