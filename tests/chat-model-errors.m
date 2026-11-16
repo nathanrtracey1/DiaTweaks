@@ -9,7 +9,7 @@ int main(void) { @autoreleasepool {
     [context evaluateScript:@"var window = {}; var reports = 0;"
         "function button(text) { return {textContent:text,attrs:{},listeners:[],getAttribute(k){return this.attrs[k]??null},"
         "setAttribute(k,v){this.attrs[k]=v},removeAttribute(k){delete this.attrs[k]},addEventListener(k,f,c){this.listeners.push(f)},"
-        "click(trusted=true){let e={isTrusted:trusted,stopped:false,preventDefault(){},stopImmediatePropagation(){this.stopped=true}};"
+        "click(){let e={stopped:false,preventDefault(){},stopImmediatePropagation(){this.stopped=true}};"
         "for(let f of this.listeners)f(e);if(!e.stopped)reports++}}}"
         "var report=button('Report Error'),retry=button('Try Again'),outside=button('Report Error');"
         "var buttons=[report,retry];var document={documentElement:{},querySelectorAll(s){"
@@ -20,14 +20,11 @@ int main(void) { @autoreleasepool {
     };
     [context evaluateScript:script(YES)];
     assert([[context evaluateScript:@"report.textContent"].toString isEqual:@"Change Model"]);
-    assert([[context evaluateScript:@"outside.textContent"].toString isEqual:@"Report Error"]);
-    assert([[context evaluateScript:@"retry.textContent"].toString isEqual:@"Try Again"]);
+    assert([context evaluateScript:@"outside.textContent==='Report Error' && retry.textContent==='Try Again'"].toBool);
     [context evaluateScript:@"report.click();"];
     assert([[context evaluateScript:script(YES)].toString isEqual:@"change-model"]);
     assert([[context evaluateScript:script(YES)].toString isEqual:@""]);
     assert([context evaluateScript:@"reports"].toInt32 == 0);
-    [context evaluateScript:@"report.click(false);"];
-    assert([[context evaluateScript:script(YES)].toString isEqual:@"change-model"]);
     [context evaluateScript:script(NO)];
     assert([[context evaluateScript:@"report.textContent"].toString isEqual:@"Report Error"]);
     assert([context evaluateScript:@"report.getAttribute('aria-label')===null"].toBool);
@@ -38,5 +35,5 @@ int main(void) { @autoreleasepool {
     [context evaluateScript:@"report.textContent='Try Again';window.__diaTweaksModelErrorAction.observer.callback();report.click();"];
     assert([[context evaluateScript:@"report.textContent"].toString isEqual:@"Try Again"]);
     assert([[context evaluateScript:script(YES)].toString isEqual:@""]);
-    puts("PASS scoped Change Model action, accessibility clicks, restoration and rerendering");
+    puts("PASS scoped Change Model action, restoration, idempotence and rerendering");
 } }

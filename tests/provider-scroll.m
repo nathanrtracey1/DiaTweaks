@@ -25,26 +25,25 @@ int main(void) { @autoreleasepool {
     [NSApplication sharedApplication];
     DPScrollTestPage *page = [[DPScrollTestPage alloc] initWithFrame:NSMakeRect(0, 0, 300, 400)];
     page.documentView = [[DPScrollTestDocument alloc] initWithFrame:NSMakeRect(0, 0, 300, 1400)];
-    NSMutableArray *models = [NSMutableArray new];
-    for (NSUInteger i = 0; i < 8; i++) [models addObject:[NSView new]];
-    NSScrollView *list = (id)DPProviderModels(models);
+    NSScrollView *list = (id)DPProviderModels(@[[NSView new]]);
     [page.documentView addSubview:list];
     list.frame = NSMakeRect(0, 200, 300, 230);
     // Control the document geometry without needing a visible Dia window.
-    list.documentView = [[DPScrollTestDocument alloc] initWithFrame:NSMakeRect(0, 0, 300, 56)];
-    NSEvent *down = DPTestWheel(-5), *up = DPTestWheel(5);
-    [list scrollWheel:down]; [list scrollWheel:up];
-    assert(page.received == 2 && page.last == up);
-
-    list.documentView.frame = NSMakeRect(0, 0, 300, 800);
-    [list.contentView scrollToPoint:NSMakePoint(0, 0)];
-    [list scrollWheel:up]; assert(page.received == 3 && page.last == up);
-    [list scrollWheel:down]; assert(page.received == 3);
-    [list.contentView scrollToPoint:NSMakePoint(0, 570)];
-    [list scrollWheel:down]; assert(page.received == 4 && page.last == down);
-    [list scrollWheel:up]; assert(page.received == 4);
-    [list.contentView scrollToPoint:NSMakePoint(0, 250)];
-    [list scrollWheel:down]; [list scrollWheel:up];
-    assert(page.received == 4);
-    puts("PASS original wheel events reach the page for short lists and both boundaries; interior events stay with the model list");
+    struct { CGFloat height, offset; int delta; BOOL forwards; } cases[] = {
+        {56, 0, -5, YES}, {56, 0, 5, YES},       // A single model never traps the wheel.
+        {800, 0, 5, YES}, {800, 0, -5, NO},     // Top boundary.
+        {800, 570, -5, YES}, {800, 570, 5, NO}, // Bottom boundary.
+        {800, 250, -5, NO}, {800, 250, 5, NO},  // Interior.
+    };
+    list.documentView = [DPScrollTestDocument new];
+    for (NSUInteger i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        list.documentView.frame = NSMakeRect(0, 0, 300, cases[i].height);
+        [list.contentView scrollToPoint:NSMakePoint(0, cases[i].offset)];
+        page.received = 0; page.last = nil;
+        NSEvent *event = DPTestWheel(cases[i].delta);
+        [list scrollWheel:event];
+        assert(page.received == (cases[i].forwards ? 1 : 0));
+        assert(page.last == (cases[i].forwards ? event : nil));
+    }
+    puts("PASS wheel-event forwarding for short lists, boundaries and interior positions");
 } }
