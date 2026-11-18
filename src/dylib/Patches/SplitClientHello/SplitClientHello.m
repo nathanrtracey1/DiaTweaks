@@ -35,7 +35,7 @@ static void DPInstallSplitClientHello(void) {
     DPInstallSplitSend();
     DPSplitting = gInProcess = DPSplitClientHello.on;
     if (!gInProcess) {
-        DPDropLaunchFeature(@"NetworkServiceInProcess2");
+        DPDropLaunchFlag(@"--enable-features=NetworkServiceInProcess2");
         return;
     }
     DPAddLaunchFlag(@"--enable-features=NetworkServiceInProcess2");

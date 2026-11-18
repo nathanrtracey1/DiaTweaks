@@ -88,6 +88,13 @@ id DPSwiftValue(id object, NSString *key) {
     return [object respondsToSelector:@selector(safeSwiftValueForKey:)] ? [object safeSwiftValueForKey:key] : nil;
 }
 
+NSMenu *DPTabContextMenu(NSView *tab) {
+    NSPoint point = [tab convertPoint:NSMakePoint(NSMidX(tab.bounds), NSMidY(tab.bounds)) toView:nil];
+    NSEvent *click = [NSEvent mouseEventWithType:NSEventTypeRightMouseDown location:point modifierFlags:0 timestamp:NSProcessInfo.processInfo.systemUptime
+                                    windowNumber:tab.window.windowNumber context:nil eventNumber:0 clickCount:1 pressure:1];
+    return [tab menuForEvent:click];
+}
+
 NSArray<NSString *> *DPUUIDsIn(NSString *text) {
     static NSRegularExpression *uuid;
     if (!uuid) uuid = [NSRegularExpression regularExpressionWithPattern:@"[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}" options:0 error:nil];

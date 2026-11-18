@@ -1,5 +1,6 @@
 #!/bin/sh
-# Checks which builds are offered the latest DiaTweaks release, without a network or Dia. Run after make.
+# Checks which builds are offered the latest DiaTweaks release, and that a Dia download it can't use is remembered,
+# without a network or Dia. Run after make.
 set -eu
 cd "$(dirname "$0")/.."
 diapatch=$PWD/build/diapatch
@@ -56,4 +57,44 @@ message=$(DIAPATCH_HOME="$temporary/home" DIAPATCH_CACHE="$temporary/cache" DIAP
     DIAPATCH_COMPARE="file://$temporary/compare" DIAPATCH_COMMIT="$newer" "$diapatch" self-update)
 case $message in *"older than the source build 1111111 "*) echo "ok   self-update names the reason" ;;
     *) echo "FAIL self-update said: $message" >&2; failures=$((failures + 1)) ;; esac
+
+# A Dia download that unpacks but can't be used is remembered for its build, so the launch check doesn't fetch it again.
+dia() {
+    DIAPATCH_HOME="$temporary/dia-home" DIAPATCH_CACHE="$temporary/dia-cache" DIAPATCH_APP="$temporary/none.app" \
+        DIAPATCH_FEED="file://$temporary/dia.xml" DIAPATCH_RELEASES="file://$temporary/release.json" "$diapatch" "$@"
+}
+offer() {
+    printf '<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><enclosure url="file://%s" length="1" sparkle:version="%s"/></item></channel></rss>' \
+        "$temporary/Dia.zip" "$1" > "$temporary/dia.xml"
+}
+# download <build offered> <bundle id> <build inside>: runs `update` on a zip holding a stand-in Dia.
+download() {
+    mkdir -p "$temporary/zip/Dia.app/Contents"
+    printf '<plist><dict><key>CFBundleIdentifier</key><string>%s</string><key>CFBundleVersion</key><string>%s</string></dict></plist>' \
+        "$2" "$3" > "$temporary/zip/Dia.app/Contents/Info.plist"
+    rm -f "$temporary/Dia.zip" "$temporary/dia-home/unpatchable.plist"
+    ditto -c -k --keepParent "$temporary/zip/Dia.app" "$temporary/Dia.zip"
+    offer "$1"
+    dia update > /dev/null 2>&1 || true
+}
+reason() { dia check --json | plutil -extract dia.unpatchable raw -o - - 2> /dev/null || true; }
+mentions() { reason | grep -qF -- "$1"; }
+silent() { [ -z "$(reason)" ]; }
+# expect <name> <command...>: passes when the command succeeds.
+expect() {
+    name=$1; shift
+    if "$@"; then echo "ok   $name"; else echo "FAIL $name" >&2; failures=$((failures + 1)); fi
+}
+
+download 200 company.thebrowser.dia 199
+expect "a download of another build is remembered" mentions "Couldn’t verify this version: the download holds build 199, not 200"
+offer 201
+expect "a newer build is tried again" silent
+download 200 com.example.other 200
+expect "a download that isn't Dia is remembered" mentions "is not Dia"
+rm -f "$temporary/dia-home/unpatchable.plist"
+echo garbage > "$temporary/Dia.zip"
+offer 200
+dia update > /dev/null 2>&1 || true
+expect "a download that doesn't unpack is not remembered" silent
 [ "$failures" = 0 ]

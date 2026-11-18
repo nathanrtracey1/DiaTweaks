@@ -617,10 +617,10 @@ static NSString *unpatchableFile(void) { return inHome(@"unpatchable.plist"); }
 
 static NSString *ownDigest(void) { return sha256(NSBundle.mainBundle.executablePath); }
 
-static void rememberUnpatchable(Release *release) {
+static void rememberUnpatchable(Release *release, NSString *action) {
     NSString *line = [gFailure componentsSeparatedByString:@"\n"].firstObject;
-    note(@"Dia %@ can't be patched by this DiaTweaks, so it isn't downloaded automatically again", release.version);
-    [@{ @"build" : release.build, @"diapatch" : ownDigest() ?: @"", @"reason" : [@"Couldn’t patch this version: " stringByAppendingString:line ?: @"unknown error"] }
+    note(@"Dia %@ can't be installed by this DiaTweaks (couldn't %@ it), so it isn't downloaded automatically again", release.version, action);
+    [@{ @"build" : release.build, @"diapatch" : ownDigest() ?: @"", @"reason" : [NSString stringWithFormat:@"Couldn’t %@ this version: %@", action, line ?: @"unknown error"] }
         writeToFile:unpatchableFile() atomically:YES];
 }
 
@@ -646,13 +646,13 @@ static BOOL update(void) {
         removeTree(work);
         return fail(@"cannot download Dia %@: %@", release.version, output);
     }
-    BOOL ok = check(@[ @"/usr/bin/ditto", @"-x", @"-k", zip, work ]) && check(@[ @"/usr/bin/xattr", @"-cr", work ])
-        && ([buildOf(app) isEqual:release.build] || fail(@"the download holds build %@, not %@", buildOf(app), release.build))
+    BOOL unpacked = check(@[ @"/usr/bin/ditto", @"-x", @"-k", zip, work ]) && check(@[ @"/usr/bin/xattr", @"-cr", work ]);
+    BOOL official = unpacked && ([buildOf(app) isEqual:release.build] || fail(@"the download holds build %@, not %@", buildOf(app), release.build))
         && verifyOfficial(app);
-    // Remember only a failed patch: a bad download or a full disk can pass.
-    BOOL built = ok && build(app);
-    if (ok && !built) rememberUnpatchable(release);
-    ok = built && makeDir(gPristine.stringByDeletingLastPathComponent) && moveBundle(app, gPristine) && (DPForgetApp(gPristine), YES);
+    BOOL built = official && build(app);
+    // Remember what unpacked but fails again on every launch; a bad download or a full disk can pass.
+    if (unpacked && !built) rememberUnpatchable(release, official ? @"patch" : @"verify");
+    BOOL ok = built && makeDir(gPristine.stringByDeletingLastPathComponent) && moveBundle(app, gPristine) && (DPForgetApp(gPristine), YES);
     removeTree(work);
     if (ok) removeTree(unpatchableFile());
     return ok && say(@"Dia %@ is staged; relaunch Dia or run `diapatch apply` to install it", release.version);

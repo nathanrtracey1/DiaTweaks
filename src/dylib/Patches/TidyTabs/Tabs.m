@@ -1,5 +1,6 @@
 #import "TidyTabs.h"
 #import "Commands/GroupTabs/GroupTabs.h"
+#import "Patches/CommandBar/Tabs.h"
 
 static NSInteger DPTidyPinnedRows(NSWindow *window) {
     for (NSView *list in DPFindViews(DPDiaTabList)) {
@@ -23,11 +24,8 @@ static NSInteger DPTidyPinnedRows(NSWindow *window) {
 
 // Scripting lists favorites, then pinned tabs, then the rest; a URL on both sides of the divider is dropped.
 NSDictionary<NSString *, NSString *> *DPTidyLooseTabs(NSWindow *window) {
-    NSArray *tabs = nil;
-    for (id each in DPMsg(NSApp.delegate, @selector(appleScriptWindows))) {
-        tabs = [each respondsToSelector:@selector(appleScriptTabs)] ? DPMsg(each, @selector(appleScriptTabs)) : nil;
-        if ([tabs isKindOfClass:NSArray.class]) break;
-    }
+    id scripted = DPScriptWindow(window);
+    NSArray *tabs = [scripted respondsToSelector:@selector(appleScriptTabs)] ? DPMsg(scripted, @selector(appleScriptTabs)) : nil;
     NSInteger pinnedRows = DPTidyPinnedRows(window);
     NSMutableDictionary<NSString *, NSString *> *loose = [NSMutableDictionary dictionary];
     NSMutableSet<NSString *> *kept = [NSMutableSet set];

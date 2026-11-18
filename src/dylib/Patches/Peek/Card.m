@@ -75,6 +75,7 @@ static NSRect DPPeekCardRect(NSRect area) { return NSInsetRect(area, NSWidth(are
     self.monitor = self.paneObserver = nil;
     self.controls.alphaValue = 0;
     DPPeekHideTabBadge(self);
+    DPPeekHideFind(self);
     return YES;
 }
 
@@ -86,8 +87,10 @@ static NSRect DPPeekCardRect(NSRect area) { return NSInsetRect(area, NSWidth(are
 }
 
 - (void)handOver {
+    NSWindow *window = self.window;
     [self stopWatching];
     [self removeFromSuperview];
+    [window resetCursorRects];
     // The card must be off screen before the page detaches, or it flashes blank.
     if (self.grown < 1) [CATransaction flush];
     [self.page detachFromPaneHostView:self.host];
@@ -122,8 +125,21 @@ static NSView *DPPeekHolder(NSWindow *window, NSView *pane) {
     return window.contentView;
 }
 
-static NSView *DPLayerView(void) {
-    NSView *view = [NSView new];
+@interface DPPeekBacking : NSView
+@end
+
+@implementation DPPeekBacking
+- (BOOL)wantsUpdateLayer { return YES; }
+- (void)viewDidMoveToWindow { [super viewDidMoveToWindow]; [self updateLayer]; }
+
+// Resolved in the card's own appearance: outside a draw pass the plain colour is the Light one, a white card in Dark Mode.
+- (void)updateLayer {
+    [self.effectiveAppearance performAsCurrentDrawingAppearance:^{ self.layer.backgroundColor = NSColor.windowBackgroundColor.CGColor; }];
+}
+@end
+
+static NSView *DPLayerView(Class kind) {
+    NSView *view = [kind new];
     view.wantsLayer = YES;
     return view;
 }
@@ -139,7 +155,36 @@ static BOOL DPPerformAppShortcut(NSEvent *event, NSEventModifierFlags mods) {
     return [NSApp.mainMenu.itemArray.firstObject.submenu performKeyEquivalent:event] || [NSApp.windowsMenu performKeyEquivalent:event];
 }
 
-// A focused Peek page swallows ⌘S and ⌃1–9, which Dia's tabs pass on to the menu.
+// The page keeps every ⌘ and ⌃ shortcut instead of handing it to Dia, and Blink doesn't paste or undo on a key equivalent.
+// So the edit commands go to the page. Dia's other commands would act on the tab behind the card.
+static BOOL DPPeekPageShortcut(DPPeekCard *peek, NSEvent *event, NSEventModifierFlags mods, NSResponder *focus) {
+    BOOL command = mods == NSEventModifierFlagCommand, shifted = mods == (NSEventModifierFlagCommand | NSEventModifierFlagShift);
+    SEL edit = NULL;
+    if (command && DPEventIsKey(event, @"x")) edit = @selector(cut:);
+    else if (command && DPEventIsKey(event, @"c")) edit = @selector(copy:);
+    else if (command && DPEventIsKey(event, @"v")) edit = @selector(paste:);
+    else if (command && DPEventIsKey(event, @"a")) edit = @selector(selectAll:);
+    else if (command && DPEventIsKey(event, @"z")) edit = @selector(undo:);
+    else if (shifted && DPEventIsKey(event, @"z")) edit = @selector(redo:);
+    else if (mods == (NSEventModifierFlagCommand | NSEventModifierFlagOption | NSEventModifierFlagShift) && DPEventIsKey(event, @"v")) edit = @selector(pasteAsPlainText:);
+    return edit && [focus respondsToSelector:edit] && [NSApp sendAction:edit to:focus from:nil];
+}
+
+static NSMenuItem *DPPeekItemFor(NSMenu *menu, NSEvent *event) {
+    for (NSMenuItem *item in menu.itemArray) {
+        NSMenuItem *found = DPPeekIsShortcut(event, item) ? item : DPPeekItemFor(item.submenu, event);
+        if (found) return found;
+    }
+    return nil;
+}
+
+// The new tab and window shortcuts, wherever the user has put them, act on the window and not on the tab behind the card.
+static BOOL DPPeekWindowCommand(NSEvent *event) {
+    if (!(event.modifierFlags & NSEventModifierFlagCommand)) return NO;
+    return [@[ @"New Tab", @"New Window", @"New Incognito Window" ] containsObject:DPPeekItemFor(NSApp.mainMenu, event).title ?: @""];
+}
+
+// A focused Peek page swallows the shortcuts Dia's tabs pass on to the menu. ⌘S and every ⌃ shortcut, such as ⌃Tab and ⌃1–9, go on to it.
 static id DPWatchKeys(DPPeekCard *card) {
     __weak DPPeekCard *weak = card;
     return [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:^NSEvent *(NSEvent *event) {
@@ -150,7 +195,10 @@ static id DPWatchKeys(DPPeekCard *card) {
         id responder = peek.window.firstResponder;
         BOOL command = mods == NSEventModifierFlagCommand, control = mods == NSEventModifierFlagControl;
         BOOL editing = [responder isKindOfClass:NSText.class] || ([responder conformsToProtocol:@protocol(NSTextInputClient)] && [responder hasMarkedText]);
-        if (DPPeekCopyURL(peek, event) || DPPeekZoomShortcut(peek, event)) return nil;
+        BOOL onPage = [responder isKindOfClass:NSView.class] && [(NSView *)responder isDescendantOf:peek.host];
+        BOOL toMenu = (command && DPEventIsKey(event, @"s")) || (onPage ? (mods & NSEventModifierFlagControl) || DPPeekWindowCommand(event) : control && DPIsDigitKey(event));
+        if (DPPeekCopyURL(peek, event) || DPPeekZoomShortcut(peek, event) || DPPeekFindShortcut(peek, event, mods)) return nil;
+        if (onPage && DPPeekPageShortcut(peek, event, mods, responder)) return nil;
         if (command && DPEventIsKey(event, @"o")) [peek close:DPPeekTab];
         // Dia's menu would navigate the tab behind the card; without the toolbar these stay stock.
         else if (command && peek.toolbar && DPEventIsKey(event, @"[")) DPPeekNavigate(peek.page, DPPeekBack);
@@ -158,7 +206,7 @@ static id DPWatchKeys(DPPeekCard *card) {
         else if (command && peek.toolbar && DPEventIsKey(event, @"r")) DPPeekNavigate(peek.page, DPPeekReload);
         else if (command && peek.toolbar && DPEventIsKey(event, @"l")) DPPeekEditToolbarAddress(peek);
         else if ((command && DPEventIsKey(event, @"w")) || (!mods && event.keyCode == kVK_Escape && !editing)) [peek close:DPPeekClose];
-        else if (!DPPerformAppShortcut(event, mods) && !(((command && DPEventIsKey(event, @"s")) || (control && DPIsDigitKey(event))) && [NSApp.mainMenu performKeyEquivalent:event])) return event;
+        else if (!DPPerformAppShortcut(event, mods) && !(toMenu && [NSApp.mainMenu performKeyEquivalent:event])) return event;
         return nil;
     }];
 }
@@ -183,19 +231,18 @@ DPPeekCard *DPPeekShowCard(NSWindow *window, id<DPPeekPage> page, NSView *warmHo
     peek.pane = pane;
     peek.page = page;
     peek.host = host;
-    peek.dim = DPLayerView();
+    peek.dim = DPLayerView(NSView.class);
     peek.dim.layer.backgroundColor = [NSColor colorWithWhite:0 alpha:DPPeekDarkness()].CGColor;
-    peek.card = DPLayerView();
+    peek.card = DPLayerView(NSView.class);
     NSShadow *shadow = [NSShadow new];
     shadow.shadowColor = [NSColor colorWithWhite:0 alpha:0.35];
     shadow.shadowBlurRadius = 24;
     shadow.shadowOffset = NSMakeSize(0, -6);
-    peek.shade = DPLayerView();
+    peek.shade = DPLayerView(DPPeekBacking.class);
     peek.shade.shadow = shadow;
-    peek.clip = DPLayerView();
+    peek.clip = DPLayerView(DPPeekBacking.class);
     peek.clip.layer.masksToBounds = YES;
     for (NSView *view in @[peek.shade, peek.clip]) {
-        view.layer.backgroundColor = NSColor.windowBackgroundColor.CGColor;
         view.layer.cornerRadius = 10;
         view.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -209,6 +256,7 @@ DPPeekCard *DPPeekShowCard(NSWindow *window, id<DPPeekPage> page, NSView *warmHo
     [holder addSubview:peek positioned:NSWindowAbove relativeTo:nil];
     [peek layoutSubtreeIfNeeded];
     if (!warmHost) [page attachToPaneHostView:host];
+    [window resetCursorRects];
     [window makeFirstResponder:host];
     if (pane) {
         pane.postsFrameChangedNotifications = YES;

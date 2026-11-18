@@ -8,6 +8,7 @@ static void DPInstallLittleDia(void) {
     DPInstallLittleDiaExtension();
     DPInstallLittleDiaRoute();
     DPInstallLittleDiaWindows();
+    DPInstallLittleDiaOver();
     DPInstallLittleDiaLinkMenu();
     DPInstallLittleDiaNewWindow();
     DPInstallLittleDiaShortcuts();

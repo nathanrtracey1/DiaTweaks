@@ -142,11 +142,12 @@ static void DPWindowWillClose(NSWindow *window) {
     if (!DPLittleDia.on || !DPIsLittleDiaWindow(window)) return;
     pid_t source = [DPGet(window, &DPSourceKey) intValue];
     BOOL key = window.isKeyWindow, promoted = [DPGet(window, &DPPromotedKey) boolValue];
+    NSArray<NSDictionary *> *stack = DPWindowStack();  // Closing brings another of Dia's windows forward; this is how the rest were.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (promoted) {
             DPBringBackPutAway(nil);
             DPShowMainWindow();
-        } else if (!DPHideAgain() && key && source) DPReturnToSource(source);
+        } else if (!DPHideAgain() && key && source) DPReturnToSource(source, window, stack);
     });
 }
 

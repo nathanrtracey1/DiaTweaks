@@ -98,6 +98,7 @@ NSString *DPLittleDiaExtensionProblem(void) {
 
 void DPInstallLittleDiaExtension(void) {
     gLaunchedAt = NSProcessInfo.processInfo.systemUptime;
+    if (!DPLittleDia.on) DPDropExtension(DPExtensionFolder());
     if (!DPWriteLittleDiaExtension(DPLittleDia.on) || !DPLittleDia.on) return;
     DPLoadExtension(DPExtensionFolder());
     gExtensionID = DPExtensionID(DPExtensionFolder());

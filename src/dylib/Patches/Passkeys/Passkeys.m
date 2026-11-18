@@ -70,6 +70,7 @@ static void DPInstallPasskeys(void) {
     if (!DPPasskeys.on) {
         [NSFileManager.defaultManager removeItemAtPath:DPExtensionFolder() error:nil];
         [NSFileManager.defaultManager removeItemAtPath:DPHostManifestPath() error:nil];
+        DPDropExtension(DPExtensionFolder());
         return;
     }
     if (!DPSetUpPasskeys()) return;

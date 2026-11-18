@@ -61,12 +61,16 @@ NSURL *DPPeekSearchURL(id page, NSString *text);
 BOOL DPPeekCopyURL(DPPeekCard *peek, NSEvent *event);
 BOOL DPPeekIsShortcut(NSEvent *event, NSMenuItem *item);
 BOOL DPPeekZoomShortcut(DPPeekCard *peek, NSEvent *event);
+BOOL DPPeekFindShortcut(DPPeekCard *peek, NSEvent *event, NSEventModifierFlags mods);
+BOOL DPPeekHideFind(DPPeekCard *peek);
 void DPPeekInstallZoom(void);
+void DPPeekInstallCursor(void);
 NSString *DPPeekZoomProblem(void);
 void DPPeekLayoutHints(NSView *controls, CGFloat availableRight);
 CATransform3D DPPeekScaled(NSView *view, CGFloat scale);
 CASpringAnimation *DPPeekSpring(NSString *keyPath, CFTimeInterval response, CGFloat dampingRatio);
 
+BOOL DPPeekInPinnedRow(NSWindow *window, id page);
 void DPPeekShowTabBadge(DPPeekCard *peek, id source);
 void DPPeekHideTabBadge(DPPeekCard *peek);
 
@@ -87,3 +91,5 @@ void DPPeekWarm(NSWindow *window, id source, NSURL *url);
 void DPPeekCool(void);
 void DPPeekOpenDragged(NSURL *url, NSPoint origin);
 BOOL DPPeekIsWeb(NSURL *url);
+BOOL DPPeekOverLink(id page, NSURL *url);  // The pointer is on a link to url in page.
+NSString *DPPeekLinkKey(NSString *address);  // Same for a link's URL and for the status text Dia shows over it.

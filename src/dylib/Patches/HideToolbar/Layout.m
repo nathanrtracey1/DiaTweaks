@@ -1,5 +1,6 @@
 #import "HideToolbar.h"
 #import "Patches/EdgeToEdge/EdgeToEdge.h"
+#import "Patches/LittleDia/LittleDia.h"
 
 NSHashTable<NSView *> *DPPanes;
 static char DPFrameKey, DPFillsKey;
@@ -36,13 +37,13 @@ static BOOL DPShowsNewTab(NSView *pane) {
 }
 
 // Only the sidebar layout has a footer, even with the sidebar hidden.
-static BOOL DPTabsAtTop(NSView *pane) {
-    return pane.window && !DPFindView(pane.window.contentView, ^BOOL(NSView *view) { return DPIsKind(view, DPDiaSidebarFooter); });
+BOOL DPTabsAtTop(NSWindow *window) {
+    return window && !DPFindView(window.contentView, ^BOOL(NSView *view) { return DPIsKind(view, DPDiaSidebarFooter); });
 }
 
 BOOL DPKeptInPlace(NSView *pane) {
     return (DPShowToolbarWithSidebar.on && DPSidebarDocked(pane)) || (DPShowToolbarOnNewTab.on && DPShowsNewTab(pane)) ||
-           (DPShowToolbarWithTopTabs.on && DPTabsAtTop(pane));
+           (DPShowToolbarWithTopTabs.on && DPTabsAtTop(pane.window));
 }
 
 NSString *DPVerifyKeptInPlace(DPPatch *patch) {
@@ -60,7 +61,7 @@ NSString *DPVerifyKeptInPlace(DPPatch *patch) {
 static CGFloat DPHidden(DPToolbarHover *hover) { return DPHideToolbar.progress * (1 - hover.inPlaceProgress); }
 
 void DPApplyToolbarOpacity(DPToolbarHover *hover) {
-    CGFloat alpha = 1 - DPHidden(hover) * (1 - hover.progress);
+    CGFloat alpha = DPLittleDiaIsOver(hover.pane.window) ? 0 : 1 - DPHidden(hover) * (1 - hover.progress);
     if (hover.bar && hover.bar.alphaValue != alpha) hover.bar.alphaValue = alpha;
     if (hover.bookmarks && hover.bookmarks.alphaValue != alpha) hover.bookmarks.alphaValue = alpha;
     DPRepaintTabs(hover.pane.window);

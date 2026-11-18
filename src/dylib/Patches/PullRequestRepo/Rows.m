@@ -104,8 +104,16 @@ static id<NSDraggingInfo> DPDiaDrag(NSView *tabList, id<NSDraggingInfo> info) {
     return DPDraggingInfoAt(info, [list convertPoint:point toView:nil]);
 }
 
-static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_entered, self, DPDiaDrag(self, info)); }
-static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_updated, self, DPDiaDrag(self, info)); }
+static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
+    NSDragOperation operation = DPCallOriginal(DPTabList_entered, self, DPDiaDrag(self, info));
+    DPPlaceDraggedTab();
+    return operation;
+}
+static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
+    NSDragOperation operation = DPCallOriginal(DPTabList_updated, self, DPDiaDrag(self, info));
+    DPPlaceDraggedTab();
+    return operation;
+}
 static BOOL DPTabList_prepare(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_prepare, self, DPDiaDrag(self, info)); }
 static BOOL DPTabList_perform(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_perform, self, DPDiaDrag(self, info)); }
 

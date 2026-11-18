@@ -4,9 +4,15 @@ import XPC
 #if canImport(FoundationModels)
 import FoundationModels
 
-// macOS 27 renames this samplingMode, but the macOS 26 SDK only has this spelling, so it's the one that builds on both.
+// FoundationModels 2 (the macOS 27 SDK) renames this samplingMode and back-deploys it to macOS 26; version 1 only has sampling.
 @available(macOS 26, *)
-private func DPTidyOptions() -> GenerationOptions { GenerationOptions(sampling: .greedy) }
+private func DPTidyOptions() -> GenerationOptions {
+    #if canImport(FoundationModels, _version: 2)
+    GenerationOptions(samplingMode: .greedy)
+    #else
+    GenerationOptions(sampling: .greedy)
+    #endif
+}
 
 @available(macOS 26, *)
 private let DPTidyInstructions = """

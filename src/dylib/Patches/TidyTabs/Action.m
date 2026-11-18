@@ -50,10 +50,11 @@ static void DPTidyGroup(id browser, id delegate, NSArray<NSDictionary *> *tabs) 
 
 void DPTidyTabsNow(NSWindow *window) {
     if (DPTidyIsBusy()) return;
-    id browser = DPCommandBrowser();
+    window = window ?: NSApp.keyWindow;
+    id browser = DPBrowserOfWindow(window);
     id delegate = browser ? DPGroupingDelegate(browser) : nil;
     if (![delegate respondsToSelector:@selector(browser:getAllTabGroupsWithCompletion:)]) return DPTidyFail(@"Dia’s tabs aren’t ready yet.");
-    NSDictionary<NSString *, NSString *> *loose = DPTidyLooseTabs(window ?: NSApp.keyWindow);
+    NSDictionary<NSString *, NSString *> *loose = DPTidyLooseTabs(window);
     NSMutableArray<NSDictionary *> *candidates = [NSMutableArray array];
     for (id contents in DPTrackedContents(browser)) {
         long long sid = DPSessionOf(contents);

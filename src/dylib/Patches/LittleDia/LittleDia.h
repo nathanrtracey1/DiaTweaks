@@ -5,7 +5,10 @@
 #define DPDiaPopupBar      "_TtC5Popup22PopupNavigationBarView"
 #define DPDiaPopupTitle    "_TtC13NavigationBar21AssistantBarTitleView"
 
-extern DPPatch DPLittleDia;
+extern DPPatch DPLittleDia, DPLittleDiaTabLinks, DPLittleDiaFollowRules;
+
+// For a plain click Dia would open in a new tab; YES when Little Dia takes it. Peek's link hooks ask this first.
+BOOL DPLittleDiaTakesTabLink(id page, NSURL *url, BOOL leavesPinned);
 
 void DPInstallLittleDiaExtension(void);
 BOOL DPWriteLittleDiaExtension(BOOL on);
@@ -19,6 +22,9 @@ NSArray<NSView *> *DPLittleDiaRows(void);
 
 void DPInstallLittleDiaRoute(void);
 void DPOpenLinkInLittleDia(NSURL *url);
+#define DPTabLinkWidth 0.8  // Of the page area's width.
+#define DPTabLinkEdge 12    // Points kept above and below.
+void DPOpenTabLinkInLittleDia(NSURL *url, NSWindow *source);  // Falls back to a tab, so the link is never lost.
 void DPOpenBlankLittleDia(void);
 
 void DPInstallLittleDiaLinkMenu(void);
@@ -36,10 +42,15 @@ void DPInstallLittleDiaWindows(void);
 void DPRefreshLittleDiaWindows(void);
 void DPPromoteLittleDiaWindow(NSWindow *window);
 
+void DPInstallLittleDiaOver(void);
+void DPPutLittleDiaOver(NSWindow *little, NSWindow *window);
+BOOL DPLittleDiaIsOver(NSWindow *window);  // Hide Toolbar keeps that window's toolbar hidden meanwhile.
+
 void DPInstallLittleDiaStack(void);
 NSDictionary *DPNoteStackForLink(void);
 void DPRestoreStack(NSWindow *little, NSDictionary *noted);
-void DPReturnToSource(pid_t pid);
+NSArray<NSDictionary *> *DPWindowStack(void);  // Normal windows on screen, front to back, with their numbers and owners.
+void DPReturnToSource(pid_t pid, NSWindow *little, NSArray<NSDictionary *> *stack);
 void DPBringBackPutAway(NSWindow *little);
 void DPLinkArrived(void);
 BOOL DPHideAgain(void);

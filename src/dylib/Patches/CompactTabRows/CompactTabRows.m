@@ -21,6 +21,16 @@ static CGFloat DPRowHeight(NSArray<NSCollectionViewLayoutAttributes *> *all) {
 
 static char DPMovesKey;
 
+typedef void (*DPHeightHandler)(double height, void *context __attribute__((swift_context))) __attribute__((swiftcall));
+
+// A group's card is sized when its list reports its height, and Dia reports it only when it sets the height, not when we lower it.
+static void DPReportHeight(NSCollectionViewLayout *layout, double height) {
+    NSView *list = layout.collectionView;
+    while (list && !DPIsKind(list, DPDiaTabList)) list = list.superview;
+    void **handler = list ? DPIvar(list, "onPreferredHeightUpdated") : NULL;
+    if (handler && handler[0]) ((DPHeightHandler)handler[0])(height + layout.collectionView.enclosingScrollView.contentInsets.top, handler[1]);
+}
+
 static void DPLayout_prepareLayout(NSCollectionViewLayout *self, SEL _cmd) {
     DPCallOriginal(DPLayout_prepareLayout, self);
     if (!DPCompactTabRows.on) return DPSet(self, &DPMovesKey, nil);
@@ -47,6 +57,7 @@ static void DPLayout_prepareLayout(NSCollectionViewLayout *self, SEL _cmd) {
     }
     *contentHeight -= cut * rows.count;
     DPSet(self, &DPMovesKey, moves);
+    DPReportHeight(self, *contentHeight);
 }
 
 // Collapse Pinned's hooks install after these, so run first and have already taken its header out of the point.
@@ -78,11 +89,32 @@ CGFloat DPTabListDiaY(NSArray<NSArray<NSValue *> *> *moves, CGFloat y) {
 - (BOOL)isKindOfClass:(Class)cls { return [(NSObject *)self.info isKindOfClass:cls]; }
 @end
 
+static NSPoint DPDragPointer, DPDragHanded;
+static BOOL DPDragHandedSet;
+
 id<NSDraggingInfo> DPDraggingInfoAt(id<NSDraggingInfo> info, NSPoint location) {
     DPCompactDrag *drag = [DPCompactDrag alloc];
     drag.info = info;
     drag.location = location;
+    id<NSDraggingInfo> pointer = info;
+    while (object_getClass(pointer) == DPCompactDrag.class) pointer = ((DPCompactDrag *)pointer).info;
+    DPDragPointer = pointer.draggingLocation;
+    DPDragHanded = location;
+    DPDragHandedSet = YES;
     return (id<NSDraggingInfo>)drag;
+}
+
+// Dia draws the dragged tab where it is told the pointer is, which with these proxies is a point in its own row geometry: put the tab back under the pointer.
+void DPPlaceDraggedTab(void) {
+    if (!DPDragHandedSet) return;
+    DPDragHandedSet = NO;
+    CGFloat up = DPDragPointer.y - DPDragHanded.y;
+    if (fabs(up) < 0.5) return;
+    for (NSWindow *window in NSApp.windows) {
+        if (!window.visible || !strstr(object_getClassName(window), "ArcDraggingWindow")) continue;
+        for (NSView *tab in window.contentView.subviews)
+            [tab setFrameOrigin:NSMakePoint(NSMinX(tab.frame), NSMinY(tab.frame) + (tab.superview.isFlipped ? -up : up))];
+    }
 }
 
 static id<NSDraggingInfo> DPDiaDrag(NSView *tabList, id<NSDraggingInfo> info) {
@@ -94,10 +126,23 @@ static id<NSDraggingInfo> DPDiaDrag(NSView *tabList, id<NSDraggingInfo> info) {
     return DPDraggingInfoAt(info, [list convertPoint:point toView:nil]);
 }
 
-static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_entered, self, DPDiaDrag(self, info)); }
-static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_updated, self, DPDiaDrag(self, info)); }
-static BOOL DPTabList_prepare(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_prepare, self, DPDiaDrag(self, info)); }
-static BOOL DPTabList_perform(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPCallOriginal(DPTabList_perform, self, DPDiaDrag(self, info)); }
+static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
+    NSDragOperation operation = DPCallOriginal(DPTabList_entered, self, DPDiaDrag(self, info));
+    DPPlaceDraggedTab();
+    return operation;
+}
+static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
+    NSDragOperation operation = DPCallOriginal(DPTabList_updated, self, DPDiaDrag(self, info));
+    DPPlaceDraggedTab();
+    return operation;
+}
+// A drop places nothing, so what it handed down must not wait for the next drag to place a tab by it.
+static BOOL DPDropped(BOOL result) {
+    DPDragHandedSet = NO;
+    return result;
+}
+static BOOL DPTabList_prepare(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPDropped(DPCallOriginal(DPTabList_prepare, self, DPDiaDrag(self, info))); }
+static BOOL DPTabList_perform(NSView *self, SEL _cmd, id<NSDraggingInfo> info) { return DPDropped(DPCallOriginal(DPTabList_perform, self, DPDiaDrag(self, info))); }
 
 static void DPGroupCell_layout(NSView *self, SEL _cmd) {
     DPCallOriginal(DPGroupCell_layout, self);

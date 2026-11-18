@@ -89,9 +89,28 @@ static uint32_t *DPLocate(void) {
     return DPSite;
 }
 
+// The same wait is what lets the pointer cross from the sidebar into a card or popover without the sidebar closing, so it stays while one is showing.
+static BOOL DPCardShowing(void) {
+    for (NSWindow *window in NSApp.windows)
+        if (window.visible && window.alphaValue > 0.01 && (DPIsKind(window, DPDiaPinnedTabCard) || DPIsKind(window, "_NSPopoverWindow"))) return YES;
+    return NO;
+}
+
+static id DPMoveMonitor;
+
+static void DPMatchWait(void) {
+    if (DPCardShowing()) DPRewrite(DPNoDelay, DPLoadDelay);
+    else DPRewrite(DPLoadDelay, DPNoDelay);
+}
+
 static void DPApplyOpenSidebarInstantly(DPPatch *patch) {
+    if (DPMoveMonitor && !patch->on) [NSEvent removeMonitor:DPMoveMonitor], DPMoveMonitor = nil;
     if (!patch->on) return (void)DPRewrite(DPNoDelay, DPLoadDelay);
-    if (DPLocate()) return (void)DPRewrite(DPLoadDelay, DPNoDelay);
+    if (DPLocate()) {
+        DPMatchWait();
+        if (!DPMoveMonitor) DPMoveMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskMouseMoved handler:^NSEvent *(NSEvent *event) { DPMatchWait(); return event; }];
+        return;
+    }
     patch->unavailable = YES;
     DPSetPatch(patch, NO, !DPTesting);
     dispatch_async(dispatch_get_main_queue(), ^{ [NSNotificationCenter.defaultCenter postNotificationName:DPPatchesDidChangeNotification object:nil]; });
@@ -109,8 +128,9 @@ static void DPInstallOpenSidebarInstantly(void) {
 static NSString *DPVerifyOpenSidebarInstantly(DPPatch *patch) {
     if (!patch->on && !DPSite) return nil;
     if (!DPSite) return @"the delay isn't where it was";
-    uint32_t expected = patch->on ? DPNoDelay : DPLoadDelay;
-    return *DPSite == expected ? nil : patch->on ? @"the delay is still there" : @"the delay is gone";
+    if (patch->on && !DPMoveMonitor) return @"the pointer isn't watched";
+    BOOL fine = patch->on ? *DPSite == (DPCardShowing() ? DPLoadDelay : DPNoDelay) : *DPSite == DPLoadDelay;
+    return fine ? nil : patch->on ? @"the delay doesn't match the cards showing" : @"the delay is gone";
 }
 
 DP_PATCH(DPOpenSidebarInstantly) {

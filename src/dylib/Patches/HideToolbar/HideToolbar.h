@@ -21,6 +21,7 @@ CGFloat DPTop(NSView *pane, NSRect r);
 CGFloat DPBottom(NSView *pane, NSRect r);
 NSView *DPBookmarksUnder(NSView *pane, NSView *bar);
 BOOL DPKeptInPlace(NSView *pane);
+BOOL DPTabsAtTop(NSWindow *window);
 NSString *DPVerifyKeptInPlace(DPPatch *patch);
 void DPApplyToolbar(NSView *pane);
 void DPApplyToolbarOpacity(DPToolbarHover *hover);

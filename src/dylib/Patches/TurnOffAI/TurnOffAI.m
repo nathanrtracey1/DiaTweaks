@@ -112,11 +112,12 @@ static BOOL gCutOff;
 
 static void DPCutOffAIServers(void) {
     gCutOff = DPTurnOffAI.on;
-    if (!gCutOff) return;
     NSMutableArray<NSString *> *rules = [NSMutableArray array];
     for (NSString *host in @[ @"ai-service", @"aiproxy", @"webresultproxy", @"websearch", @"artifactcdn", @"tools-cache" ])
         [rules addObject:[NSString stringWithFormat:@"MAP %@.diabrowser.engineering ~NOTFOUND", host]];
-    DPAddLaunchFlag([@"--host-resolver-rules=" stringByAppendingString:[rules componentsJoinedByString:@", "]]);
+    NSString *flag = [@"--host-resolver-rules=" stringByAppendingString:[rules componentsJoinedByString:@", "]];
+    if (gCutOff) DPAddLaunchFlag(flag);
+    else DPDropLaunchFlag(flag);
 }
 
 static void DPOfferRelaunch(DPPatch *patch) {

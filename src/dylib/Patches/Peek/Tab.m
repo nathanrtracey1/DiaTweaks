@@ -36,6 +36,13 @@ static NSView *DPPeekOriginTab(NSWindow *window, id source) {
     return selected;
 }
 
+// An icon tile's links already leave in a new tab, but a pinned row's stay in it, and only its menu says it is pinned.
+BOOL DPPeekInPinnedRow(NSWindow *window, id page) {
+    NSView *tab = DPPeekOriginTab(window, page);
+    NSMenuItem *unpin = tab && !DPIsKind(tab, DPDiaPinnedTab) ? [DPTabContextMenu(tab) itemWithTitle:@"Unpin"] : nil;
+    return unpin && !unpin.hidden && unpin.enabled;
+}
+
 static NSString *DPPeekTabContentKey(NSView *tab) {
     NSString *state = [DPTabState(tab) description];
     NSRange mark = [state rangeOfString:@"contentIDs: ["];

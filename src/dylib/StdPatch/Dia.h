@@ -13,6 +13,7 @@
 #define DPDiaSidebarController  "_TtC10TabSidebar30SidebarContainerViewController"
 #define DPDiaTabStripController "_TtC8TabStrip31TabStripContainerViewController"
 #define DPDiaTabStrip           "_TtCC8TabStrip31TabStripContainerViewControllerP33_466228EC43BE4F33691D8E9BB7BFDE208RootView"
+#define DPDiaTabStripTabs       "TabStrip.TabStripContainerView"
 #define DPDiaWindowBackground   "_TtGC5ARCUI25WindowFrameBackgroundViewC15WindowTreatment24WindowBackgroundBaseView_"
 #define DPDiaNavigationBar      "_TtC13NavigationBar17NavigationBarView"
 #define DPDiaWindow             "_TtC6Window14PlatformWindow"
@@ -41,6 +42,7 @@
 #define DPDiaBrowserDelegate    "_TtC3ADK15ChromiumBrowser"
 #define DPDiaWebContents        "ArcWebContents"  // A tab's page, declared in ArcCore's ArcWebContents.h.
 #define DPDiaNavigationController "ArcWebContentsNavigationController"
+#define DPDiaMediaSession       "ArcWebContentsMediaSession"
 #define DPDiaTabGroupProperties "ArcTabGroupProperties"
 #define DPDiaToasts             "_TtC11DiaToastsV210ToastPanel"
 #define DPDiaTabSwitcher        "_TtC10RecentTabs26RecentTabsWindowController"
@@ -84,6 +86,7 @@
 #define DPDiaNewTabButton       "_TtC7TabList14NewTabCellView"
 #define DPDiaBrowserContext     "ArcBrowserContext"
 #define DPDiaBrowserContextEffects "ArcBrowserContextEffects"  // The engine Arc's Boosts ran on; Dia never calls it.
+#define DPDiaRenderWidget       "RenderWidgetHostViewCocoa"
 #define DPDiaWebContentsConfiguration "ArcWebContentsConfiguration"
 #define DPDiaWebContent         "_TtC3ADK18WebContentChromium"  // Dia's delegate for each page. A Swift class: look it up after launch.
 #define DPDiaTabList            "_TtC7TabList11TabListView"

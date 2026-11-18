@@ -132,6 +132,13 @@ Apple Passwords, its passkeys and 1Password only trust the original Dia, so in t
 </details>
 
 <details>
+<summary><strong>Why does my passkey prompt only offer "Use a phone or tablet"?</strong></summary>
+
+Dia shows a QR code or asks for a USB security key because it can't reach the passkeys on your Mac. To load tweaks, DiaTweaks has to sign Dia again, and macOS only lets an app use passkeys on the Mac itself (Touch ID, Apple Passwords) if the company that made it signed it. To get the Touch ID prompt back for passkeys saved in Apple Passwords, switch on **Allow iCloud Passkeys** in **Dia → Settings → Patches**, or run `diatweaks enable passkeys`, then relaunch Dia. It's experimental and only works on websites. It can't help with a passkey a browser extension asks for itself, like a password manager unlocking itself. For those, use the extension's master password, or run `diatweaks restore` to go back to the original Dia. [How it works →](https://github.com/JaceThings/DiaTweaks/wiki/Allow-iCloud-Passkeys)
+
+</details>
+
+<details>
 <summary><strong>What if Dia keeps crashing?</strong></summary>
 
 If Dia crashes twice in a row right after opening, it opens next time with the tweaks off. **Settings → Patches** has a button to turn them back on.

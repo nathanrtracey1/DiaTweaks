@@ -34,6 +34,8 @@ static BOOL DPCrashed(NSDictionary *state) {
 
 static void DPSurvived(void) {
     if (![DPState[@"launching"] boolValue]) return;
+    // A relaunch can start before this process exits and write its own marker: that one stays.
+    if ([[NSDictionary dictionaryWithContentsOfURL:DPStateURL error:nil][@"pid"] integerValue] != getpid()) return;
     DPState[@"launching"] = @NO;
     // Level 2 loads no Settings to leave it from, so one surviving launch steps down to 1, once per build.
     if (DPSafeMode == 2 && ![DPState[@"steppedDown"] boolValue]) {

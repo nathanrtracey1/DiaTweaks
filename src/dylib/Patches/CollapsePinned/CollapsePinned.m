@@ -249,7 +249,10 @@ static char DPRefusedKey;
 static NSDragOperation DPTabList_entered(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
     id<NSDraggingInfo> dia = DPDiaDragOf(self, info);
     DPSet(self, &DPRefusedKey, dia ? nil : @YES);
-    return dia ? DPCallOriginal(DPTabList_entered, self, dia) : NSDragOperationNone;
+    if (!dia) return NSDragOperationNone;
+    NSDragOperation operation = DPCallOriginal(DPTabList_entered, self, dia);
+    DPPlaceDraggedTab();
+    return operation;
 }
 
 static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {
@@ -262,7 +265,9 @@ static NSDragOperation DPTabList_updated(NSView *self, SEL _cmd, id<NSDraggingIn
         return NSDragOperationNone;
     }
     if (refused) return [(id<NSDraggingDestination>)self draggingEntered:info];
-    return DPCallOriginal(DPTabList_updated, self, dia);
+    NSDragOperation operation = DPCallOriginal(DPTabList_updated, self, dia);
+    DPPlaceDraggedTab();
+    return operation;
 }
 
 static BOOL DPTabList_prepare(NSView *self, SEL _cmd, id<NSDraggingInfo> info) {

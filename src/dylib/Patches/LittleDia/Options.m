@@ -106,3 +106,14 @@ DP_PATCH(DPLittleDiaEscape) {
     .requires = @"littleDia",
     .install = DPInstallEscape,
 };
+
+DP_PATCH(DPLittleDiaFollowRules) {
+    .key = @"littleDiaFollowRules",
+    .order = 104,
+    .title = @"Follow Link Rules",
+    .detail = @"Hands links from other apps to Dia untouched, so its Link Rules pick the profile and they open as tabs, not in Little Dia. "
+              @"Right-clicking a link and choosing Open Link in Little Dia still works.",
+    .symbol = @"signpost.right.and.left",
+    .tint = @"systemMintColor",
+    .requires = @"littleDia",
+};

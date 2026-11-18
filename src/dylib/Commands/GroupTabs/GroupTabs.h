@@ -7,6 +7,7 @@ void DPInstallGroupTabs(void);
 id DPCommandBrowser(void);
 NSWindow *DPBrowserWindow(id browser);
 id DPBrowserOfWindow(NSWindow *window);
+id DPBrowserOfContents(id contents);  // nil for a page Dia never told us about.
 id DPGroupingDelegate(id browser);
 NSArray *DPTrackedContents(id browser);
 long long DPSessionOf(id contents);
