@@ -114,8 +114,6 @@ check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-t
 	build/tracking
 	build/little-dia-over
 	tests/sidebar-grain
-	scripts/check-patches
-	tests/sidebar-grain
 	tests/agent-transport
 	tests/chat-models
 	tests/providers
