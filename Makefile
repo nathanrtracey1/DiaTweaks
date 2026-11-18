@@ -9,6 +9,8 @@ SWIFTFLAGS := -target arm64-apple-macos14.0 -O -parse-as-library -wmo -module-na
 	-Xfrontend -disable-autolink-framework -Xfrontend FoundationModels
 PASSKEYS := src/dylib/Patches/Passkeys/extension
 EXTENSION := $(foreach file,manifest.json page.js bridge.js worker.js,-Wl,-sectcreate,__TEXT,__pk_$(basename $(file)),$(PASSKEYS)/$(file))
+PROVIDER_LOGOS := $(wildcard src/dylib/Patches/DiaChatModel/logos/*)
+PROVIDER_IMAGES := $(foreach file,$(PROVIDER_LOGOS),-Wl,-sectcreate,__TEXT,__dp_$(basename $(notdir $(file))),$(file))
 
 DYLIB_OBJS := $(patsubst src/dylib/%.m,build/obj/%.o,$(filter %.m,$(DYLIB_SOURCES)))
 # diapatch records the commit it was built from, to tell a source build that is newer than the latest release from one that isn't.
@@ -31,8 +33,8 @@ build/obj/%.o: src/dylib/%.m
 	@mkdir -p $(dir $@)
 	clang $(CFLAGS) -Isrc/dylib -c -o $@ $<
 
-build/DiaPatches.dylib: $(DYLIB_OBJS) build/DiaPatchesSwift.o $(wildcard $(PASSKEYS)/*) | build
-	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) -framework AppKit -framework QuartzCore -framework Metal -framework UniformTypeIdentifiers -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
+build/DiaPatches.dylib: $(DYLIB_OBJS) build/DiaPatchesSwift.o $(wildcard $(PASSKEYS)/*) $(PROVIDER_LOGOS) | build
+	clang $(CFLAGS) -Isrc/dylib -dynamiclib $(EXTENSION) $(PROVIDER_IMAGES) -framework AppKit -framework QuartzCore -framework Metal -framework UniformTypeIdentifiers -framework AVFoundation -framework VideoToolbox -framework CoreMedia -framework CoreVideo \
 		-L$(SWIFT_LIB) -Wl,-rpath,/usr/lib/swift $(FOUNDATION_MODELS) -o $@ $(DYLIB_OBJS) build/DiaPatchesSwift.o
 
 # With DIAPATCH_MANIFEST set, the dylib writes the patch list and exits as it loads, so diapatch never runs.
@@ -114,6 +116,9 @@ check: build/diapatch build/group-tabs build/mouse-back-forward build/vertical-t
 	tests/sidebar-grain
 	scripts/check-patches
 	tests/sidebar-grain
+	tests/agent-transport
+	tests/chat-models
+	tests/providers
 	scripts/check-patches
 
 test: build/DiaPatches.dylib

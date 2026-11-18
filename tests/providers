@@ -1,0 +1,59 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+temporary=$(mktemp -d "${TMPDIR:-/tmp}/chat-providers-test.XXXXXX")
+trap 'rm -rf "$temporary"' EXIT
+patch=src/dylib/Patches/DiaChatModel
+cat > "$temporary/main.swift" <<'SWIFT'
+import Foundation
+@main struct Tests {
+    static func main() async throws {
+        setbuf(stdout, nil)
+        try testProviderWireFailure()
+        try await testProviderDeadline()
+        try testProviderBranding()
+        try testProviderSecretCache()
+        try testProviderStore()
+        try testChatGPTIdentity()
+        try await testChatGPTCallback()
+        try await testChatGPTSessions()
+        try await testProviderHTTP(CommandLine.arguments[1])
+        try await testAppleInput()
+        if ProcessInfo.processInfo.environment["DIATWEAKS_TEST_APPLE"] == "1" {
+            try await testAppleChat(CommandLine.arguments[2])
+            try await testAppleTools()
+        }
+    }
+}
+SWIFT
+swiftc -DCHAT_MODEL_TESTS -parse-as-library "$patch"/OpenAI*.swift "$patch"/AnthropicStream.swift "$patch"/Apple*.swift "$patch"/ChatGPT*.swift "$patch"/Provider{Audit,Branding,Deadline,SecretsCache,Store,Validation,Accounts,Catalog,HTTP,Reasoning,Wire}.swift \
+    tests/provider-secrets.swift tests/provider-secret-cache.swift tests/provider-store.swift tests/provider-branding.swift tests/provider-deadline.swift tests/provider-wire.swift tests/provider-http.swift tests/apple-input.swift tests/apple-tools.swift tests/apple-chat.swift tests/chatgpt-identity.swift tests/chatgpt-transport.swift tests/chatgpt-callback.swift "$temporary/main.swift" -o "$temporary/check"
+clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-routing.m "$patch/ProviderRouting.m" "$patch/ProviderRun.m" "$patch/SafetyCheck.m" "$patch/SafetyReview.m" "$patch/AgentRequest.m" -o "$temporary/routing"
+"$temporary/routing"
+clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-safety.m "$patch/ProviderRun.m" "$patch/SafetyCheck.m" "$patch/SafetyReview.m" -o "$temporary/safety"
+"$temporary/safety" "$temporary/apple-safety.json"
+clang -fobjc-arc -Isrc/dylib -framework AppKit tests/provider-files.m "$patch/ChatPaths.m" "$patch/ChatReports.m" "$patch/ChatAttachments.m" "$patch/ChatAttachmentContent.m" -o "$temporary/files"
+"$temporary/files"
+clang -fobjc-arc -mmacosx-version-min=14.0 -Isrc/dylib -framework AppKit tests/provider-menu.m "$patch/ProviderMenu.m" -o "$temporary/menu"
+"$temporary/menu"
+clang -fobjc-arc -Isrc/dylib -framework Foundation -framework JavaScriptCore tests/chat-model-errors.m -o "$temporary/errors"
+"$temporary/errors"
+set --
+for logo in "$patch"/logos/*; do
+    name=$(basename "$logo")
+    set -- "$@" "-Wl,-sectcreate,__TEXT,__dp_${name%.*},$logo"
+done
+clang -fobjc-arc -Isrc/dylib -framework AppKit "$@" tests/provider-icons.m "$patch/ProviderIcons.m" -o "$temporary/icons"
+"$temporary/icons"
+clang -fobjc-arc -Isrc/dylib -framework AppKit -framework CoreGraphics tests/provider-scroll.m "$patch/ProviderModels.m" -o "$temporary/scroll"
+"$temporary/scroll"
+python3 - "$temporary/check" "$temporary" <<'PY'
+import os, subprocess, sys
+server = subprocess.Popen([sys.executable, 'tests/provider-server.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+try:
+    port = server.stdout.readline().strip()
+    env = dict(os.environ, DIAPATCH_HOME=sys.argv[2])
+    subprocess.run([sys.argv[1], 'http://127.0.0.1:' + port, os.path.join(sys.argv[2], 'apple-safety.json')], env=env, check=True)
+finally:
+    server.stdin.close(); server.wait(timeout=5)
+PY
