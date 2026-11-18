@@ -17,6 +17,11 @@ for pr in "${PRS[@]}"; do
     git fetch "$upstream_remote" "+pull/$pr/head:pr-$pr" 2>/dev/null || true
 done
 
+if git remote | grep -q "^ryan$"; then
+    echo "==> Fetching Ryan's custom model providers..."
+    git fetch ryan feature/custom-model-providers:ryan-custom-model-providers 2>/dev/null || true
+fi
+
 echo "==> Merging upstream updates into your branch..."
 git merge "$upstream_remote/main" --no-edit
 
@@ -24,6 +29,11 @@ for pr in "${PRS[@]}"; do
     echo "==> Merging PR #$pr..."
     git merge "pr-$pr" --no-edit 2>/dev/null || true
 done
+
+if git branch | grep -q "ryan-custom-model-providers"; then
+    echo "==> Merging custom model providers..."
+    git merge ryan-custom-model-providers --no-edit 2>/dev/null || true
+fi
 
 echo "==> Running checks..."
 make check
