@@ -10,7 +10,7 @@ static NSString *DPSocketPath(NSDictionary *environment) {
     if (![path isKindOfClass:NSString.class] || ![path hasPrefix:prefix] || ![path hasSuffix:@".sock"] ||
         strlen(path.fileSystemRepresentation) >= sizeof(((struct sockaddr_un *)0)->sun_path)) return nil;
     NSString *name = [path substringFromIndex:prefix.length];
-    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-"];
+    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._- "];
     return [name rangeOfCharacterFromSet:allowed.invertedSet].location == NSNotFound ? path : nil;
 }
 

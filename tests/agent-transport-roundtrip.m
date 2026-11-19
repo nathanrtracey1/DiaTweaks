@@ -7,7 +7,7 @@ NSTask *DPTestAgentTask(NSString *path) {
     NSTask *task = [NSTask new];
     task.executableURL = [NSURL fileURLWithPath:path];
     NSMutableDictionary *environment = [NSProcessInfo.processInfo.environment mutableCopy];
-    environment[@"AGENT_SERVER_SOCKET_PATH"] = [NSString stringWithFormat:@"/tmp/dia-agent.server.%d.test.sock", getpid()];
+    environment[@"AGENT_SERVER_SOCKET_PATH"] = [NSString stringWithFormat:@"/tmp/dia-agent.server.Profile 5.%d.test.sock", getpid()];
     environment[@"KEEP"] = @"preserved";
     task.environment = environment;
 #ifdef CONFIGURED_AGENT
