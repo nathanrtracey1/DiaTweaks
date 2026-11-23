@@ -49,7 +49,7 @@ void DPProviderStretch(NSView *view) {
         [card.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     }
     DPProviderStretch(self);
-    DPPatch *patch = DPPatchNamed(@"diaChatModel");
+    DPPatch *patch = DPPatchNamed(@"chatModel");
     if (patch) DPFindView(self, ^BOOL(NSView *view) {
         BOOL label = [view isKindOfClass:NSTextField.class] && !((NSTextField *)view).editable;
         if ([view isKindOfClass:NSControl.class] && !label) ((NSControl *)view).enabled = patch->on;

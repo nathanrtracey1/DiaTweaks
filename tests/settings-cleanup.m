@@ -257,7 +257,7 @@ int main(void) {
 
         DPTesting = YES;
         DPInstallChatGPTPage();
-        DPPatch *chat = DPPatchNamed(@"diaChatModel");
+        DPPatch *chat = DPPatchNamed(@"chatModel");
         DPPageView *chatPage = [[DPPageView alloc] initWithPatch:chat];
         expectEqual(DPHeadersIn(chatPage), (@[ @"Model", @"Behavior", @"Providers" ]), @"Chat Model cards stay in order");
         NSArray<NSView *> *behavior = DPRowsIn(DPGroupTitled(chatPage, @"Behavior"));
@@ -267,7 +267,7 @@ int main(void) {
             return [view isKindOfClass:NSButton.class] && [view.accessibilityIdentifier isEqual:@"chatModelAddProvider"];
         });
         expect(addProvider && !addProvider.enabled, @"Add Provider is disabled with Chat Model off");
-        DPSetOn(@"diaChatModel", YES);
+        DPSetOn(@"chatModel", YES);
         [chatPage sync];
         expect(addProvider.enabled, @"Add Provider is enabled with Chat Model on");
 

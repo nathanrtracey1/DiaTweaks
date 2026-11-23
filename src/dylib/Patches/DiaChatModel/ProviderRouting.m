@@ -80,7 +80,7 @@ static NSData *DPProviderResponse(NSData *line, DPAgentReply reply) {
 // When the last custom run ends, switch back to the native request-only filter.
 static void DPRefreshChatFilters(void) {
     if (DPCurrentProvider || DPActiveRuns.count || DPPendingRuns.count) return;
-    DPSetAgentFilters(@"diaChatModel", DPNativeChatFilter, nil);
+    DPSetAgentFilters(@"chatModel", DPNativeChatFilter, nil);
 }
 
 void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
@@ -99,7 +99,7 @@ void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
         }
         DPPendingRuns = DPPendingRuns ?: [NSMutableDictionary new];
         DPActiveRuns = DPActiveRuns ?: [NSMutableDictionary new];
-        DPSetAgentFilters(@"diaChatModel", ^NSData *(NSData *line, DPAgentReply reply) { return DPProviderRequest(line, reply); },
+        DPSetAgentFilters(@"chatModel", ^NSData *(NSData *line, DPAgentReply reply) { return DPProviderRequest(line, reply); },
             ^NSData *(NSData *line, DPAgentReply reply) { return DPProviderResponse(line, reply); });
     }
 }

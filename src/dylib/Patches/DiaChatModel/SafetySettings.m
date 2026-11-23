@@ -10,5 +10,5 @@ DP_PATCH(DPDiaChatSafety) {
     .key = @"diaChatSafety", .order = 262, .defaultOn = YES,
     .title = @"Safety Check",
     .detail = @"Automatically review tool calls before they run.",
-    .symbol = @"checkmark.shield", .tint = @"systemPurpleColor", .requires = @"diaChatModel", .apply = DPSafetyChanged,
+    .symbol = @"checkmark.shield", .tint = @"systemPurpleColor", .requires = @"chatModel", .apply = DPSafetyChanged,
 };

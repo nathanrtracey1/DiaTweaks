@@ -65,7 +65,7 @@ void DPRefreshChatGPTStatus(void) {}
 void DPCancelChatAccount(NSString *identifier) {}
 void DPSetChatSafety(NSDictionary *safety) {}
 void DPSetChatProvider(NSDictionary *provider, DPAgentFilter nativeFilter) {
-    DPSetAgentFilters(@"diaChatModel", nativeFilter, nil);
+    DPSetAgentFilters(@"chatModel", nativeFilter, nil);
 }
 
 #define CHECK(condition, ...) do { if (!(condition)) { fprintf(stderr, "FAIL line %d: %s\n  ", __LINE__, #condition); fprintf(stderr, "" __VA_ARGS__); fputc('\n', stderr); exit(1); } } while (0)
@@ -228,7 +228,7 @@ static void TestOffIsUntouched(void) {
     gChoice = @"claude-haiku-5-5";
     DPDiaChatModel.on = NO;
     DPApplyDiaChatModel(&DPDiaChatModel);
-    DPSetAgentFilters(@"diaChatModel", nil, nil);
+    DPSetAgentFilters(@"chatModel", nil, nil);
     CHECK(!DPAgentFiltersActive() && !DPAgentTransportInstalled(), "off must not register a filter or hook NSTask");
     CHECK(class_getMethodImplementation(task, launch) == before, "off must leave NSTask alone");
     CHECK(DPAgentFilters(YES).count == 0 && DPAgentFilterCount(NO) == 0, "off has no filters in either direction");

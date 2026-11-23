@@ -34,7 +34,7 @@ void DPOrderChatModelOptions(NSView *page);
 - (void)sync {
     NSDictionary *provider = DPSelectedChatAccount();
     BOOL apple = [provider[@"api"] isEqual:@"apple"];
-    BOOL active = DPPatchNamed(@"diaChatModel")->on && (apple || [provider[@"api"] isEqual:@"chatgpt"]);
+    BOOL active = DPPatchNamed(@"chatModel")->on && (apple || [provider[@"api"] isEqual:@"chatgpt"]);
     BOOL connected = [provider[@"api"] isEqual:@"chatgpt"] && [provider[@"id"] length] &&
         [DPChatProviders credentialAvailable:provider[@"id"]] && !provider[@"error"];
     self.status.stringValue = apple ? @"Limited to basic page, web and file tools. Connectors aren’t supported." :

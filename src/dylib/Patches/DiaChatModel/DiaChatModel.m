@@ -106,7 +106,7 @@ static NSString *DPVerifyDiaChatModel(DPPatch *patch) {
 }
 
 DP_PATCH(DPDiaChatModel) {
-    .key = @"diaChatModel",
+    .key = @"chatModel",
     .order = 260,
     .title = @"Chat Model",
     .detail = @"Choose a Dia model or add your own provider. If Dia’s chat helper was already running when you turn this on, DiaTweaks offers to relaunch Dia.",

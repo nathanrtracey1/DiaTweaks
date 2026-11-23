@@ -18,7 +18,7 @@ static void DPOpenChatModelPage(NSUInteger retries) {
         [table.delegate tableViewSelectionDidChange:[NSNotification notificationWithName:NSTableViewSelectionDidChangeNotification object:table]];
         for (DPOverviewView *overview in DPFindViews("DPOverviewView")) {
             if (overview.window != table.window || overview.hiddenOrHasHiddenAncestor || !overview.open) continue;
-            DPPatch *patch = DPPatchNamed(@"diaChatModel");
+            DPPatch *patch = DPPatchNamed(@"chatModel");
             overview.open(patch->title, [[DPPageView alloc] initWithPatch:patch]);
             return;
         }
