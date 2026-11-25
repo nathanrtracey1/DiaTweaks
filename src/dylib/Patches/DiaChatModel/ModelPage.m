@@ -1,9 +1,10 @@
-#import "StdPatch/StdPatch.h"
+#import "Providers.h"
 
-extern DPPatch DPDiaChatModel, DPDiaChatModelFallback;
+extern DPPatch DPDiaChatModel, DPDiaChatModelFallback, DPDiaChatSafety;
 NSArray<NSString *> *DPInstalledChatModels(void);
 NSString *DPSelectedDiaChatModel(NSString *choice, NSArray<NSString *> *models, BOOL fallback);
 NSMenu *DPDiaChatModels(void);
+void DPGroupChatModelOptions(NSStackView *page, NSView *model, NSView *fallback, NSView *safety);
 
 static BOOL DPIsModelPage(NSView *page) {
     return DPFindView(page, ^BOOL(NSView *view) {
@@ -17,8 +18,21 @@ static NSPopUpButton *DPModelPicker(NSView *page) {
     });
 }
 
+static NSView *DPModelOptionRow(NSView *page, NSString *title) {
+    NSView *toggle = DPFindView(page, ^BOOL(NSView *view) {
+        return [view isKindOfClass:NSSwitch.class] && DPHasLabel(view, title);
+    });
+    return toggle.superview.superview;
+}
+
+void DPOrderChatModelOptions(NSView *page) {
+    if (!DPIsModelPage(page)) return;
+    NSView *fallback = DPModelOptionRow(page, DPDiaChatModelFallback.title), *safety = DPModelOptionRow(page, DPDiaChatSafety.title);
+    DPGroupChatModelOptions((id)page, DPModelPicker(page).superview, fallback, safety);
+}
+
 static NSString *DPModelPickerChoice(void) {
-    return DPSelectedDiaChatModel(DPChoice(&DPDiaChatModel), DPInstalledChatModels(), DPDiaChatModelFallback.on) ?: @"dia-default";
+    return DPActiveChatChoice();
 }
 
 void DPRefreshDiaModelPicker(void) {
@@ -42,6 +56,11 @@ NSString *DPVerifyDiaModelPage(DPPatch *patch) {
             return [view isKindOfClass:NSSwitch.class] && DPHasLabel(view, DPDiaChatModelFallback.title);
         });
         if (!fallback || fallback.state != DPDiaChatModelFallback.on) return @"the fallback switch does not match its saved state";
+        NSView *fallbackRow = DPModelOptionRow(page, DPDiaChatModelFallback.title), *safetyRow = DPModelOptionRow(page, DPDiaChatSafety.title);
+        NSStackView *group = [fallbackRow.superview isKindOfClass:NSStackView.class] ? (id)fallbackRow.superview : nil;
+        if (!group || safetyRow.superview != group ||
+            [group.arrangedSubviews indexOfObject:fallbackRow] >= [group.arrangedSubviews indexOfObject:safetyRow])
+            return @"the fallback option is not above Safety Check";
     }
     return nil;
 }

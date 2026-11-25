@@ -15,6 +15,6 @@ DP_PATCH(DPDiaChatModelFallback) {
     .detail = @"Use Dia Default when the saved model is no longer listed.",
     .symbol = @"arrow.uturn.backward",
     .tint = @"systemPurpleColor",
-    .requires = @"diaChatModel",
+    .requires = @"chatModel",
     .apply = DPApplyModelFallback,
 };
