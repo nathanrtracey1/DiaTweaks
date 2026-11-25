@@ -512,7 +512,11 @@ check: build/diapatch build/diapatch-tests build/group-tabs build/mouse-back-for
 	build/local-tweaks --type=local-tweaks
 	tests/sidebar-grain
 	scripts/build-tweaks --check
+	build/profile-symbols
 	scripts/check-patches
+
+build/profile-symbols: tests/profile-symbols.m src/dylib/Patches/ProfileEmoji/Symbols.m | build
+	clang $(CFLAGS) -Isrc/dylib -framework AppKit -o $@ $^
 
 test: build/DiaPatches.dylib
 	./test.sh
