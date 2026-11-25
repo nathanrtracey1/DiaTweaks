@@ -39,6 +39,14 @@ body:
         - Extensions Shortcut
         - Hide Site Not Working Prompt
         - Sidebar Grain
+        - Sidebar address bar
+        - Comfortable sidebar spacing
+        - Divider below extensions
+        - Extensions button only
+        - Hide top address bar
+        - Reveal actions on hover
+        - Use Dia’s default address editor
+        - Use extension tiles
         - Window Material
         - Compact Tab Rows
         - Narrower Sidebar
@@ -81,6 +89,8 @@ body:
         - Blur Page Behind
         - Darken Page Behind
         - Shadow Behind Bar
+        - Search Sites with Tab
+        - Include Popular Sites
         - Hide Setup Suggestions
         - Hide History Suggestions
         - Hide New Tab Logo

@@ -597,7 +597,7 @@ static void TestEdgeToEdgeOffAndRestore(void) {
     [container updateLayer];
     Check(container.frameWrites == 0, @"EdgeToEdge: updateLayer does not synchronously call container.frame =");
     DrainMain();
-    Check(container.frameWrites >= 1, @"EdgeToEdge: deferred restyle restores frame cleanly off updateLayer");
+    Check(NSEqualRects(container.frame, NSMakeRect(220, 0, 680, 600)), @"EdgeToEdge: deferred restyle keeps container edge-to-edge with chat open");
 
     chatHost.hidden = YES;
     container.frame = NSMakeRect(220, 6, 674, 588);

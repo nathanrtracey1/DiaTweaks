@@ -131,6 +131,7 @@ DP_PATCH(DPSidebarExtensionDivider) {
     .order = 91, .title = @"Divider below extensions",
     .detail = @"Separate extension tiles from pinned tabs.",
     .symbol = @"minus",
+    .tint = @"systemTealColor",
     .section = @"Sidebar & Tab Bar",
     .requires = @"sidebarAddressBar",
     .apply = DPApplyExtensionsOnHover,

@@ -4,7 +4,7 @@ static char DPChatKey, DPPendingRestyleKey, DPCheckChatKey;
 
 static void DPRestyleContainerBody(NSView *container, BOOL allowFrame) {
     DPApplySquareCorners(container);
-    if (!allowFrame) return;
+    if (!allowFrame || !DPEdgeToEdgeActive()) return;
     NSView *host = DPChatCardHost(container);
     if (host) {
         NSValue *requested = DPChatHostRequestedFrame(host);

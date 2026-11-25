@@ -93,6 +93,6 @@ DP_PATCH(DPSidebarHideTopToolbar) {
     .key = @"sidebarHideTopToolbar", .order = 88, .defaultOn = YES,
     .title = @"Hide top address bar",
     .detail = @"Use the sidebar address bar in place of the top toolbar.",
-    .symbol = @"menubar.rectangle", .section = @"Sidebar & Tab Bar",
+    .symbol = @"menubar.rectangle", .tint = @"systemTealColor", .section = @"Sidebar & Tab Bar",
     .requires = @"sidebarAddressBar", .apply = DPApplySidebarHideTopToolbar,
 };

@@ -1,5 +1,9 @@
 #import "Patches/EdgeToEdge/ChatCard.m"
 
+char DPAnimationKey;
+DPPatch DPEdgeToEdge, DPSquareChatCorners;
+const CGFloat DPWindowPadding = 6;
+
 static int failures;
 
 static void expect(BOOL ok, NSString *what) {

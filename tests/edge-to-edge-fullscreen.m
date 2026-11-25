@@ -228,11 +228,11 @@ static void TestChatCard(void) {
     Fixture f = MakeFixture(window, NSMakeRect(220, 6, 1214, 888));
     f.chatHost.hidden = NO;
     Check(DPChatCard(f.container) == f.chatHost, @"the side chat is found");
-    Check(!DPFullScreen(f.container), @"a chat card container is never treated as full screen");
+    Check(DPFullScreen(f.container), @"a chat card container stays full screen");
     f.container.frame = NSMakeRect(220, 6, 1214, 888);
-    Check(NSEqualRects(f.container.frame, NSMakeRect(220, 6, 1214, 888)), @"the chat card keeps Dia's padding in full screen");
+    Check(NSEqualRects(f.container.frame, NSMakeRect(220, 0, 1220, 900)), @"the chat card container stays edge-to-edge in full screen");
     DPRestyleContainer(f.container);
-    Check(DPCornersRound(f.rounded.layer, NO) && DPCornersRound(f.rounded.layer, YES), @"the chat card keeps round corners in full screen");
+    Check(!DPCornersRound(f.rounded.layer, NO) && DPCornersRound(f.chatHost.layer, YES), @"the chat card keeps round right corners when squareChatCorners is off");
 
     f.chatHost.hidden = YES;
     f.container.frame = NSMakeRect(220, 6, 1214, 888);

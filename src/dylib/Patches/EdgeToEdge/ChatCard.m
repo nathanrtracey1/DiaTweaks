@@ -16,6 +16,7 @@ NSView *DPRoundedContent(NSView *container) {
 }
 
 static BOOL DPChatIsOpen(NSView *root, NSView *host) {
+    if (host.hidden) return NO;
     for (NSView *v in root.subviews) {
         if (!v.isHidden && NSWidth(v.frame) > 0 && [NSStringFromClass(v.class) containsString:@"AssistantSidebarDraggerHandleView"])
             return YES;
@@ -43,7 +44,7 @@ NSView *DPChatCardHost(NSView *container) {
         for (NSView *host in root.subviews) {
             if (!DPChatIsOpen(root, host)) continue;
             if (DPIsChatCard(host, size) || DPFindView(host, ^BOOL(NSView *v) { return DPIsChatCard(v, size); }) != nil) {
-                if (host.class != DPHookedChatHostClass) {
+                if (host.class != DPHookedChatHostClass && [NSStringFromClass(host.class) containsString:@"AssistantSidebarContentContainerView"]) {
                     DPHookedChatHostClass = host.class;
                     DPHookClass(host.class, @selector(setFrame:), (IMP)DPChatHost_setFrame);
                 }
